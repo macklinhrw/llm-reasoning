@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: macklin-dep
+spec:
+  selector:
+    matchLabels:
+      app: macklin-dep
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: macklin-dep
+    spec:
+      containers:
+        - name: gpu-container
+          image: macklinrw/llm:v1.02
+          command:
+            ["jupyter", "lab", "--NotebookApp.token=macklin", "--allow-root"]
+          volumeMounts:
+            - mountPath: /storage
+              name: macklin-volume
+          resources:
+            limits:
+              memory: "64G"
+              cpu: "8"
+              ephemeral-storage: 500Gi
+              nvidia.com/a100: 1
+            requests:
+              memory: "64G"
+              cpu: "8"
+              ephemeral-storage: 500Gi
+              nvidia.com/a100: 1
+          env:
+            - name: WANDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: macklin-secret
+                  key: WANDB_TOKEN
+            - name: HUGGING_FACE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: macklin-secret
+                  key: HUGGING_FACE_TOKEN
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: macklin-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: macklin-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: "NVIDIA_DISABLE_REQUIRE"
+              value: "1"
+      volumes:
+        - name: macklin-volume
+          persistentVolumeClaim:
+            claimName: macklin-volume

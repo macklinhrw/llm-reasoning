@@ -1,0 +1,11 @@
+name: llm-reasoning
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11
+  - jupyter
+  - jupyterlab
+  - ipywidgets
+  - pip:
+      - -r requirements.txt

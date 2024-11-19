@@ -1,0 +1,17 @@
+ipywidgets
+torch
+torchvision
+xformers
+sentencepiece
+datasets
+loralib
+einops
+scipy
+wandb
+jupyterlab
+matplotlib
+accelerate
+bitsandbytes
+unsloth
+trl
+peft
