@@ -148,10 +148,10 @@ def batch_evaluate_gsm8k(model, tokenizer, batch_size=8, num_samples=None):
 
             total += 1
 
-        if (i + batch_size) % (batch_size * 5) == 0:
-            print(
-                f"Progress: {total}/{len(dataset)} - Current Accuracy: {(correct/total)*100:.2f}%"
-            )
+        # Print progress after each batch
+        print(
+            f"Progress: {total}/{len(dataset)} - Current Accuracy: {(correct/total)*100:.2f}%"
+        )
 
     import json
 
@@ -214,12 +214,14 @@ def run_evaluation(model_name, num_samples=None, batch_size=8):
 
 models = [
     "meta-llama/Llama-3.2-3B",
+    "meta-llama/Llama-3.1-8B",
     "meta-llama/Llama-3.2-3B-Instruct",
+    "meta-llama/Llama-3.1-8B-Instruct",
     "Qwen/Qwen2.5-7B-Instruct",
 ]
 
 if __name__ == "__main__":
-    model_name = models[1]
+    model_name = models[3]
 
     accuracy = run_evaluation(
         model_name=model_name,
