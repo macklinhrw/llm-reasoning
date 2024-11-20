@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: gpu-container
-          image: macklinrw/llm:v1.02
+          image: macklinrw/llm:v1.04
           command:
             ["jupyter", "lab", "--NotebookApp.token=macklin", "--allow-root"]
           volumeMounts:
@@ -25,12 +25,14 @@ spec:
               memory: "64G"
               cpu: "8"
               ephemeral-storage: 500Gi
-              nvidia.com/a100: 1
+              # nvidia.com/a100: 1
+              nvidia.com/rtxa6000: 1
             requests:
               memory: "64G"
               cpu: "8"
               ephemeral-storage: 500Gi
-              nvidia.com/a100: 1
+              # nvidia.com/a100: 1
+              nvidia.com/rtxa6000: 1
           env:
             - name: WANDB_TOKEN
               valueFrom:

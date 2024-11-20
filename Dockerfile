@@ -55,11 +55,12 @@ RUN jupyter contrib nbextension install --user && \
 # chown -R 1001 /.local && \
 # echo "export PATH=$PATH:~/.local/bin" > ~/.bashrc
 
+# Had issue with permissions when not running as root
 # USER 1001
 
 # Install python requirements and finish
-RUN pip install vllm
 
+RUN pip install vllm
 # RUN pip install git+https://github.com/vllm-project/vllm.git@main
 
 # Install AWS CLI for syncing
@@ -69,9 +70,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     rm -rf aws && \
     rm awscliv2.zip
 
-COPY requirements.txt /workspace
+COPY ./docker-src/requirements.txt /workspace
 
-RUN pip install -r ./docker-src/requirements.txt
+RUN pip install -r ./requirements.txt
 
 RUN pip install -q -U transformers==4.46.0
 RUN pip install -q -U flash-attn --no-build-isolation --no-deps
@@ -82,6 +83,7 @@ RUN pip install -q -U flash-attn --no-build-isolation --no-deps
 # RUN pip install -q -U git+https://github.com/TimDettmers/bitsandbytes.git
 
 COPY ./docker-src/* /workspace
+# COPY ./src/* /src/workspace
 
 RUN chmod +x ./start.sh
 

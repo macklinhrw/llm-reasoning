@@ -1,0 +1,8 @@
+pandas
+numpy
+torch
+transformers
+sentencepiece
+datasets
+matplotlib
+python-dotenv
