@@ -206,7 +206,11 @@ def run_evaluation(model_name, num_samples=None, batch_size=8, prompt=zero_shot_
 
     try:
         accuracy = batch_evaluate_gsm8k(
-            model, tokenizer, batch_size=batch_size, num_samples=num_samples
+            model,
+            tokenizer,
+            batch_size=batch_size,
+            num_samples=num_samples,
+            prompt=prompt,
         )
         print(f"\nFinal Accuracy: {accuracy:.2f}%")
         return accuracy

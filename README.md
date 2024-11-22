@@ -19,4 +19,6 @@ Currently Refactoring
 
 #### Few-shot CoT (8-shot)
 
-`Llama-3.2-3B-Instruct` - GSM8K - 68.69% Accuracy (77.7 reported 8-shot CoT)
+`Llama-3.2-3B-Instruct` - GSM8K - 73.54% Accuracy (77.7 reported 8-shot CoT)
+
+`Llama-3.1-8B-Instruct` - GSM8K - 82.64% Accuracy (84.5 reported 8-shot CoT)
