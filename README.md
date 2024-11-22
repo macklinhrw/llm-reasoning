@@ -6,7 +6,7 @@ Currently Refactoring
 
 #### Links
 
-- [llama benchmarks blog](https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/)
+- [llama3.2 benchmarks blog](https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/)
 - [qwen2.5 benchmarks blog](https://qwenlm.github.io/blog/qwen2.5-llm/#qwen25-7b-performance)
 
 #### Zero-shot CoT
