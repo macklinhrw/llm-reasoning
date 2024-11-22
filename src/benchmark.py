@@ -226,6 +226,7 @@ def run_evaluation(model_name, num_samples=None, batch_size=8, prompt=zero_shot_
 models = [
     "meta-llama/Llama-3.2-3B",
     "meta-llama/Llama-3.1-8B",
+    "meta-llama/Llama-3.2-1B-Instruct",
     "meta-llama/Llama-3.2-3B-Instruct",
     "meta-llama/Llama-3.1-8B-Instruct",
     "Qwen/Qwen2.5-7B-Instruct",
