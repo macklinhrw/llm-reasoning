@@ -61,6 +61,7 @@ def extract_answer(response):
     """Extract the final numerical answer from the response, handling commas."""
     try:
         response = response.replace(",", "")
+        # this regex seems fine for GSM8K
         numbers = re.findall(r"-?\d*\.?\d+", response)
         return float(numbers[-1]) if numbers else None
     except Exception as e:
@@ -115,11 +116,14 @@ def batch_evaluate_gsm8k(
             for messages in batch_messages
         ]
 
+        # gives us a list of tensors, one for each question in the batch
         batch_inputs = tokenizer(
             batch_texts, return_tensors="pt", padding=True, truncation=True
         ).to(model.device)
 
         with torch.no_grad():
+            # we can then pass this batch of tensors to the model
+            # and it will generate in parallel for each question (batch inference)
             generated_ids = model.generate(
                 **batch_inputs,
                 max_new_tokens=512,
