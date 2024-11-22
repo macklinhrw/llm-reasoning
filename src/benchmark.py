@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 import os
 from dotenv import load_dotenv
+from prompts import few_shot_prompt, zero_shot_prompt
 
 # Load environment variables from .env file
 load_dotenv()
@@ -67,7 +68,9 @@ def extract_answer(response):
         return None
 
 
-def batch_evaluate_gsm8k(model, tokenizer, batch_size=8, num_samples=None):
+def batch_evaluate_gsm8k(
+    model, tokenizer, batch_size=8, num_samples=None, prompt=zero_shot_prompt
+):
     dataset = load_dataset("gsm8k", "main")["test"]
 
     if num_samples:
@@ -98,7 +101,7 @@ def batch_evaluate_gsm8k(model, tokenizer, batch_size=8, num_samples=None):
             [
                 {
                     "role": "system",
-                    "content": "You are a helpful math assistant. Solve the problem step by step and provide the final answer as a number.",
+                    "content": prompt,
                 },
                 {"role": "user", "content": question},
             ]
@@ -162,7 +165,7 @@ def batch_evaluate_gsm8k(model, tokenizer, batch_size=8, num_samples=None):
     return final_accuracy
 
 
-def run_evaluation(model_name, num_samples=None, batch_size=8):
+def run_evaluation(model_name, num_samples=None, batch_size=8, prompt=zero_shot_prompt):
     """
     Evaluates model accuracy on gsm8k dataset.
     """
@@ -221,10 +224,11 @@ models = [
 ]
 
 if __name__ == "__main__":
-    model_name = models[3]
+    model_name = models[2]
 
     accuracy = run_evaluation(
         model_name=model_name,
         num_samples=None,
         batch_size=64,
+        prompt=few_shot_prompt,
     )
