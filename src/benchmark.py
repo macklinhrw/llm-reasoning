@@ -6,7 +6,15 @@ import numpy as np
 from tqdm import tqdm
 import os
 from dotenv import load_dotenv
-from prompts import few_shot_prompt, zero_shot_prompt
+from prompts import (
+    gsm8k_few_shot_prompt,
+    gsm8k_zero_shot_prompt,
+    llama3_2_gsm8k_few_shot_examples,
+    llama3_2_gsm8k_instruction_prompt,
+)
+import datetime
+import json
+from utils import format_few_shot_examples
 
 # Load environment variables from .env file
 load_dotenv()
@@ -70,7 +78,12 @@ def extract_answer(response):
 
 
 def batch_evaluate_gsm8k(
-    model, tokenizer, batch_size=8, num_samples=None, prompt=zero_shot_prompt
+    model,
+    tokenizer,
+    batch_size=8,
+    num_samples=None,
+    instruction_prompt=llama3_2_gsm8k_instruction_prompt,
+    examples=llama3_2_gsm8k_few_shot_examples,
 ):
     dataset = load_dataset("gsm8k", "main")["test"]
 
@@ -100,10 +113,13 @@ def batch_evaluate_gsm8k(
 
         batch_messages = [
             [
-                {
-                    "role": "system",
-                    "content": prompt,
-                },
+                # base prompt
+                # {
+                #     "role": "system",
+                #     "content": instruction_prompt,
+                # },
+                # few shot examples
+                *format_few_shot_examples(examples),
                 {"role": "user", "content": question},
             ]
             for question in questions
@@ -146,6 +162,7 @@ def batch_evaluate_gsm8k(
                     "response": response,
                     "predicted": predicted_answer,
                     "correct": correct_answers[j],
+                    "prompt": batch_texts[j],
                 }
             )
 
@@ -160,16 +177,30 @@ def batch_evaluate_gsm8k(
             f"Progress: {total}/{len(dataset)} - Current Accuracy: {(correct/total)*100:.2f}%"
         )
 
-    import json
-
-    with open("evaluation_results.json", "w") as f:
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d")
+    model_name_short = model_name.split("/")[-1]
+    # Find first available suffix number
+    suffix = 1
+    while suffix < 100:
+        results_file = f"results/evaluation_results-{model_name_short}-{timestamp}-{suffix:02d}.json"
+        if not os.path.exists(results_file):
+            break
+        suffix += 1
+    os.makedirs(os.path.dirname(results_file), exist_ok=True)
+    with open(results_file, "w") as f:
         json.dump(results_log, f, indent=2, default=str)
 
     final_accuracy = (correct / total) * 100
     return final_accuracy
 
 
-def run_evaluation(model_name, num_samples=None, batch_size=8, prompt=zero_shot_prompt):
+def run_evaluation(
+    model_name,
+    num_samples=None,
+    batch_size=8,
+    instruction_prompt=llama3_2_gsm8k_instruction_prompt,
+    examples=llama3_2_gsm8k_few_shot_examples,
+):
     """
     Evaluates model accuracy on gsm8k dataset.
     """
@@ -210,7 +241,8 @@ def run_evaluation(model_name, num_samples=None, batch_size=8, prompt=zero_shot_
             tokenizer,
             batch_size=batch_size,
             num_samples=num_samples,
-            prompt=prompt,
+            instruction_prompt=instruction_prompt,
+            examples=examples,
         )
         print(f"\nFinal Accuracy: {accuracy:.2f}%")
         return accuracy
@@ -239,5 +271,5 @@ if __name__ == "__main__":
         model_name=model_name,
         num_samples=None,
         batch_size=64,
-        prompt=few_shot_prompt,
+        examples=llama3_2_gsm8k_few_shot_examples,
     )

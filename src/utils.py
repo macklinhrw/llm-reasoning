@@ -1,6 +1,26 @@
 import re
 
 
+def format_few_shot_examples(examples):
+    messages = []
+    for example in examples:
+        messages.extend(
+            [
+                {
+                    "role": "user",
+                    "content": format_question_prompt(example["question"]),
+                },
+                {"role": "assistant", "content": example["answer"]},
+            ]
+        )
+
+    return messages
+
+
+def format_question_prompt(question):
+    return f'Given the following problem, reason and give a final answer to the problem.\nProblem: {question}\nYour response should end with "The final answer is [answer]" where [answer] is the response to the problem.'
+
+
 # https://github.com/allenai/olmes/blob/main/oe_eval/tasks/utils.py
 def extract_answer(
     continuation: str, answer_regexes, prefix_regexes=None, use_last_raw_match=True
