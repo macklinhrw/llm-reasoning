@@ -14,7 +14,7 @@ from prompts import (
 )
 import datetime
 import json
-from utils import format_few_shot_examples
+from utils import format_few_shot_examples, format_question_prompt
 
 # Load environment variables from .env file
 load_dotenv()
@@ -120,7 +120,7 @@ def batch_evaluate_gsm8k(
                 # },
                 # few shot examples
                 *format_few_shot_examples(examples),
-                {"role": "user", "content": question},
+                {"role": "user", "content": format_question_prompt(question)},
             ]
             for question in questions
         ]
