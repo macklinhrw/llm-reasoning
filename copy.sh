@@ -12,6 +12,6 @@ fi
 echo "Copying files to pod $POD_NAME..."
 kubectl cp ./notebooks/. $POD_NAME:/workspace/
 kubectl cp ./src/. $POD_NAME:/workspace/src/
-kubectl cp ./results/. $POD_NAME:/workspace/results/
+# kubectl cp ./results/. $POD_NAME:/workspace/results/
 
 echo "Files copied successfully!"

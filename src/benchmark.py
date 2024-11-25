@@ -138,14 +138,19 @@ def batch_evaluate_gsm8k(
         ).to(model.device)
 
         with torch.no_grad():
+            # Set random seed for reproducibility
+            torch.manual_seed(42)
             # we can then pass this batch of tensors to the model
             # and it will generate in parallel for each question (batch inference)
             generated_ids = model.generate(
                 **batch_inputs,
-                max_new_tokens=512,
+                max_new_tokens=1024,
                 do_sample=False,  # Greedy decoding
                 num_beams=1,
                 pad_token_id=tokenizer.pad_token_id,
+                # top_k=0,
+                # top_p=0,
+                # temperature=0.0,
             )
 
         for j, (input_ids, output_ids) in enumerate(
@@ -177,15 +182,9 @@ def batch_evaluate_gsm8k(
             f"Progress: {total}/{len(dataset)} - Current Accuracy: {(correct/total)*100:.2f}%"
         )
 
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d")
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_name_short = model_name.split("/")[-1]
-    # Find first available suffix number
-    suffix = 1
-    while suffix < 100:
-        results_file = f"results/evaluation_results-{model_name_short}-{timestamp}-{suffix:02d}.json"
-        if not os.path.exists(results_file):
-            break
-        suffix += 1
+    results_file = f"results/evaluation_results-{model_name_short}-{timestamp}.json"
     os.makedirs(os.path.dirname(results_file), exist_ok=True)
     with open(results_file, "w") as f:
         json.dump(results_log, f, indent=2, default=str)
