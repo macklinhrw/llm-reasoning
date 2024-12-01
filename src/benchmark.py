@@ -14,7 +14,14 @@ from prompts import (
 )
 import datetime
 import json
-from utils import format_few_shot_examples, format_question_prompt
+from utils import (
+    format_few_shot_examples,
+    format_question_prompt,
+    extract_answer,
+    parse_number,
+)
+from chat_templates import llama_template
+from test_evals import test_evals, compare_evals, evaluate_model_response
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,8 +35,21 @@ os.environ["HF_TOKEN"] = hf_token
 
 
 # Claude-3.5-sonnet generated code -- currently working on refactoring
-def get_chat_template(model_name):
+
+
+def get_chat_template(tokenizer, model_name):
+    # Some chat templates we might want to override, which are
+    # at the top. Other templates will be the default from the tokenizer.
+    # Otherwise we provide our own.
     try:
+
+        # Overwrite llama template
+        if "llama" in model_name.lower():
+            return llama_template
+
+        if tokenizer.chat_template is not None:
+            return tokenizer.chat_template
+
         # Try to get the default template from the model's config
         config = AutoConfig.from_pretrained(model_name)
         if hasattr(config, "chat_template"):
@@ -56,28 +76,8 @@ def get_chat_template(model_name):
         return None
 
 
-def parse_number(text):
-    """Parse a number string, handling commas."""
-    try:
-        return float(text.replace(",", "").strip())
-    except Exception as e:
-        print(f"Error parsing number: {text}")
-        raise e
-
-
-def extract_answer(response):
-    """Extract the final numerical answer from the response, handling commas."""
-    try:
-        response = response.replace(",", "")
-        # this regex seems fine for GSM8K
-        numbers = re.findall(r"-?\d*\.?\d+", response)
-        return float(numbers[-1]) if numbers else None
-    except Exception as e:
-        print(f"Error extracting answer from: {response}")
-        return None
-
-
 def batch_evaluate_gsm8k(
+    model_name,
     model,
     tokenizer,
     batch_size=8,
@@ -159,7 +159,9 @@ def batch_evaluate_gsm8k(
             generated_part = output_ids[len(input_ids) :]
             response = tokenizer.decode(generated_part, skip_special_tokens=True)
 
-            predicted_answer = extract_answer(response)
+            predicted_answer, is_correct = evaluate_model_response(
+                response, correct_answers[j]
+            )
 
             results_log.append(
                 {
@@ -168,13 +170,12 @@ def batch_evaluate_gsm8k(
                     "predicted": predicted_answer,
                     "correct": correct_answers[j],
                     "prompt": batch_texts[j],
+                    "is_correct": is_correct,
                 }
             )
 
-            if predicted_answer is not None:
-                if abs(predicted_answer - correct_answers[j]) < 1e-6:
-                    correct += 1
-
+            if is_correct:
+                correct += 1
             total += 1
 
         # Print progress after each batch
@@ -226,9 +227,8 @@ def run_evaluation(
     tokenizer.padding_side = "left"
 
     # Instruct variants of models should already have a default chat template
-    if tokenizer.chat_template is None:
-        chat_template = get_chat_template(model_name)
-        tokenizer.chat_template = chat_template
+    chat_template = get_chat_template(tokenizer, model_name)
+    tokenizer.chat_template = chat_template
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -236,6 +236,7 @@ def run_evaluation(
 
     try:
         accuracy = batch_evaluate_gsm8k(
+            model_name,
             model,
             tokenizer,
             batch_size=batch_size,
@@ -254,6 +255,20 @@ def run_evaluation(
         return None
 
 
+def test_evals(model_name):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.padding_side = "left"
+
+    # Instruct variants of models should already have a default chat template
+    chat_template = get_chat_template(tokenizer, model_name)
+    tokenizer.chat_template = chat_template
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    compare_evals(tokenizer)
+
+
 models = [
     "meta-llama/Llama-3.2-3B",
     "meta-llama/Llama-3.1-8B",
@@ -264,7 +279,7 @@ models = [
 ]
 
 if __name__ == "__main__":
-    model_name = models[2]
+    model_name = models[3]
 
     accuracy = run_evaluation(
         model_name=model_name,
@@ -272,3 +287,5 @@ if __name__ == "__main__":
         batch_size=64,
         examples=llama3_2_gsm8k_few_shot_examples,
     )
+
+    # test_evals(model_name)
