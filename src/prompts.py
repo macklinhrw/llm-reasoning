@@ -26,6 +26,10 @@ Given the following problem, reason and give a final answer to the problem.
 Your response should end with "The final answer is [answer]" where [answer] is the response to the problem.
 """.strip()
 
+full_gsm8k_zero_shot_prompt = (
+    f"{gsm8k_zero_shot_prompt}\n\n{llama3_2_gsm8k_instruction_prompt}"
+)
+
 llama3_2_gsm8k_few_shot_examples = [
     {
         "question": "There are 15 trees in the grove. Grove workers will plant trees in the grove today. After they are done, there will be 21 trees. How many trees did the grove workers plant today?",

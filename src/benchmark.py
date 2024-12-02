@@ -11,6 +11,7 @@ from prompts import (
     gsm8k_zero_shot_prompt,
     llama3_2_gsm8k_few_shot_examples,
     llama3_2_gsm8k_instruction_prompt,
+    full_gsm8k_zero_shot_prompt,
 )
 import datetime
 import json
@@ -82,8 +83,8 @@ def batch_evaluate_gsm8k(
     tokenizer,
     batch_size=8,
     num_samples=None,
-    instruction_prompt=llama3_2_gsm8k_instruction_prompt,
-    examples=llama3_2_gsm8k_few_shot_examples,
+    instruction_prompt=None,
+    examples=None,
 ):
     dataset = load_dataset("gsm8k", "main")["test"]
 
@@ -113,17 +114,29 @@ def batch_evaluate_gsm8k(
 
         batch_messages = [
             [
-                # base prompt
-                # {
-                #     "role": "system",
-                #     "content": instruction_prompt,
-                # },
-                # few shot examples
-                *format_few_shot_examples(examples),
                 {"role": "user", "content": format_question_prompt(question)},
             ]
             for question in questions
         ]
+
+        if examples:
+            batch_messages = [
+                # [
+                #     # few shot examples
+                #     # only if examples are provided
+                #     *format_few_shot_examples(examples),
+                # ]
+                # for question in questions
+                format_few_shot_examples(examples) + batch_messages[i]
+                for i in range(len(batch_messages))
+            ]
+
+        if instruction_prompt:
+            # prepend instruction prompt to list
+            batch_messages = [
+                [{"role": "system", "content": instruction_prompt}] + batch_messages[i]
+                for i in range(len(batch_messages))
+            ]
 
         batch_texts = [
             tokenizer.apply_chat_template(
@@ -198,11 +211,12 @@ def run_evaluation(
     model_name,
     num_samples=None,
     batch_size=8,
-    instruction_prompt=llama3_2_gsm8k_instruction_prompt,
-    examples=llama3_2_gsm8k_few_shot_examples,
+    instruction_prompt=None,
+    examples=None,
 ):
     """
     Evaluates model accuracy on gsm8k dataset.
+    Num samples is optional, if None, all samples are used.
     """
 
     # Enable Flash Attention
@@ -279,13 +293,14 @@ models = [
 ]
 
 if __name__ == "__main__":
-    model_name = models[3]
+    model_name = models[2]
 
     accuracy = run_evaluation(
         model_name=model_name,
         num_samples=None,
         batch_size=64,
-        examples=llama3_2_gsm8k_few_shot_examples,
+        # examples=llama3_2_gsm8k_few_shot_examples,
+        instruction_prompt=full_gsm8k_zero_shot_prompt,
     )
 
     # test_evals(model_name)
