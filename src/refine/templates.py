@@ -6,12 +6,6 @@ def gsm_template(question: str):
     with open("data/gsm_init.txt", "r") as examples:
         examples = examples.read()
 
-    # return f"""
-    # {examples}\n\n
-    # # Q: {question}
-    # # solution using Python:\n
-    # """.strip()
-
     ## use chat template format
     messages = []
     messages.append(
@@ -44,12 +38,6 @@ def gsm_template(question: str):
 def gsm_template_modified(question: str):
     with open("data/gsm_init.txt", "r") as examples:
         examples = examples.read()
-
-    # return f"""
-    # {examples}\n\n
-    # # Q: {question}
-    # # solution using Python:\n
-    # """.strip()
 
     ## use chat template format
     messages = []
@@ -89,19 +77,6 @@ def common_gen_template(concepts: List[str]):
             for example in examples_raw.split("\n")
             if example.strip()
         ]
-        # for example in examples_json:
-        #     examples += f"""
-        #     ###\n
-        #     Concepts: {example['concepts']}
-        #     Sentence: {example['answer']}
-        #     """.strip()
-
-    # return f"""
-    # ###\n
-    # {examples}\n
-    # Concepts: {concepts}\n
-    # Sentence:
-    # """.strip()
 
     ## use chat template format
     messages = []
@@ -130,19 +105,6 @@ def common_gen_template_modified(concepts: List[str]):
             for example in examples_raw.split("\n")
             if example.strip()
         ]
-        # for example in examples_json:
-        #     examples += f"""
-        #     ###\n
-        #     Concepts: {example['concepts']}
-        #     Sentence: {example['answer']}
-        #     """.strip()
-
-    # return f"""
-    # ###\n
-    # {examples}\n
-    # Concepts: {concepts}\n
-    # Sentence:
-    # """.strip()
 
     ## use chat template format
     messages = []
@@ -164,18 +126,22 @@ def common_gen_template_modified(concepts: List[str]):
     return messages
 
 
-def feedback_template(messages: List[str]):
+def feedback_template(messages: List[str], prompt: str = None):
     feedback_prompt = "Review your previous answer and find problems with your answer."
+    if prompt:
+        feedback_prompt = prompt
     messages.append({"role": "user", "content": f"{feedback_prompt}"})
     return messages
 
 
-def refine_template(messages: List[str], instructions: str):
+def refine_template(messages: List[str], instructions: str, prompt: str = None):
     """
     Instructions are for answer formatting.
     """
     refine_prompt = (
         f"Based on the problems you found, improve your answer. {instructions}"
-    )
+    ).strip()
+    if prompt:
+        refine_prompt = f"{prompt}\n{instructions}"
     messages.append({"role": "user", "content": f"{refine_prompt}"})
     return messages

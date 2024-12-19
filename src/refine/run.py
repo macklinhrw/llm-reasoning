@@ -80,7 +80,13 @@ def batch_generate(prompts: List[List[str]], model, tokenizer):
     return responses
 
 
-def run_feedback(prompts: List[List[str]], responses: List[str], model, tokenizer):
+def run_feedback(
+    prompts: List[List[str]],
+    responses: List[str],
+    model,
+    tokenizer,
+    template_prompt: str = None,
+):
     print("Running feedback...")
 
     # # print prompts
@@ -107,7 +113,9 @@ def run_feedback(prompts: List[List[str]], responses: List[str], model, tokenize
 
     # run the feedback template
     # iterate over each prompt and append the feedback template
-    feedback_prompts = [templates.feedback_template(prompt) for prompt in prompts]
+    feedback_prompts = [
+        templates.feedback_template(prompt, template_prompt) for prompt in prompts
+    ]
 
     # print prompts
     # for i, prompt in enumerate(feedback_prompts):
@@ -135,6 +143,7 @@ def run_refine(
     model,
     tokenizer,
     instructions: str = None,
+    template_prompt: str = None,
 ):
     print("Running refine...")
 
@@ -145,7 +154,8 @@ def run_refine(
     # run the refine template
     # iterate over each prompt and append the refine template
     refine_prompts = [
-        templates.refine_template(prompt, instructions) for prompt in prompts
+        templates.refine_template(prompt, instructions, template_prompt)
+        for prompt in prompts
     ]
     refine_responses = batch_generate(refine_prompts, model, tokenizer)
 
@@ -208,11 +218,14 @@ def run_gsm(model, tokenizer):
 
 
 def run_common_gen(model, tokenizer):
+    feedback_prompt = "what concepts from the concept list are missing from the sentence and does the sentence make sense?"
+    refine_prompt = "Okay, improve the sentence using the feedback."
+
     # load the common gen data
     with open("data/commongen_hard.jsonl", "r") as f:
         commongen_data = [json.loads(line) for line in f.readlines()]
 
-    commongen_data = commongen_data[:40]
+    commongen_data = commongen_data[:20]
     prompts_unmodified = [
         templates.common_gen_template(prompt["concepts"]) for prompt in commongen_data
     ]
@@ -246,17 +259,35 @@ def run_common_gen(model, tokenizer):
 
     # run feedback + refine for unmodified
     feedback_unmodified = run_feedback(
-        prompts_unmodified, responses_unmodified, model, tokenizer
+        prompts_unmodified,
+        responses_unmodified,
+        model,
+        tokenizer,
+        feedback_prompt,
     )
     refine_unmodified = run_refine(
-        prompts_unmodified, feedback_unmodified, model, tokenizer
+        prompts_unmodified,
+        feedback_unmodified,
+        model,
+        tokenizer,
+        refine_prompt,
     )
 
     # run feedback + refine for modified
     feedback_modified = run_feedback(
-        prompts_modified, responses_modified, model, tokenizer
+        prompts_modified,
+        responses_modified,
+        model,
+        tokenizer,
+        feedback_prompt,
     )
-    refine_modified = run_refine(prompts_modified, feedback_modified, model, tokenizer)
+    refine_modified = run_refine(
+        prompts_modified,
+        feedback_modified,
+        model,
+        tokenizer,
+        refine_prompt,
+    )
 
     # eval the pre-refine responses
     print("Pre-refine:")
