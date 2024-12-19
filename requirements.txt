@@ -6,3 +6,5 @@ sentencepiece
 datasets
 matplotlib
 python-dotenv
+nltk
+spacy
