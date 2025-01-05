@@ -44,6 +44,9 @@ def evaluate_result(predicted_answer, correct_answer):
 
 
 def test_evals():
+    """
+    calculate the number of correct predictions on the gsm8k dataset
+    """
     llama_evals = load_dataset(
         "meta-llama/Llama-3.2-1B-Instruct-evals",
         name="Llama-3.2-1B-Instruct-evals__gsm8k__details",

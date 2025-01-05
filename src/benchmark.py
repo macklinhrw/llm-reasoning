@@ -20,9 +20,11 @@ from utils import (
     format_question_prompt,
     extract_answer,
     parse_number,
+    get_gsm8k_answers,
 )
 from chat_templates import llama_template
 from test_evals import test_evals, compare_evals, evaluate_model_response
+from generate import batch_generate, k_shot_generate, self_consistency_generate
 
 # Load environment variables from .env file
 load_dotenv()
@@ -208,17 +210,160 @@ def batch_evaluate_gsm8k(
 
 
 def run_evaluation(
-    model_name,
-    num_samples=None,
+    model,
+    tokenizer,
+    generate_fn,
     batch_size=8,
     instruction_prompt=None,
     examples=None,
+    num_samples=None,
+    generate_kwargs={},
 ):
     """
     Evaluates model accuracy on gsm8k dataset.
     Num samples is optional, if None, all samples are used.
+    generate_kwargs allows passing additional arguments to the generate function
     """
+    try:
+        # get gsm8k dataset
+        dataset = load_dataset("gsm8k", "main")["test"]
 
+        if num_samples:
+            dataset = dataset.select(range(num_samples))
+
+        correct = 0
+        total = 0
+
+        results_log = []
+
+        for i in tqdm(range(0, len(dataset), batch_size)):
+            batch_slice = slice(i, min(i + batch_size, len(dataset)))
+            batch_data = dataset[batch_slice]
+
+            questions = batch_data["question"]
+            correct_answers = [
+                parse_number(answer.split("####")[-1].strip())
+                for answer in batch_data["answer"]
+            ]
+
+            batch_messages = [
+                [
+                    {"role": "user", "content": format_question_prompt(question)},
+                ]
+                for question in questions
+            ]
+
+            # Examples and instruction prompt
+            if examples:
+                batch_messages = [
+                    format_few_shot_examples(examples) + batch_messages[i]
+                    for i in range(len(batch_messages))
+                ]
+
+            if instruction_prompt:
+                batch_messages = [
+                    [{"role": "system", "content": instruction_prompt}]
+                    + batch_messages[i]
+                    for i in range(len(batch_messages))
+                ]
+
+            # 1. batch generate for current batch
+            responses = generate_fn(batch_messages, model, tokenizer, **generate_kwargs)
+            # 2. run evals and get accuracy
+            for j, (response_data, correct_answer) in enumerate(
+                zip(responses, correct_answers)
+            ):
+                # Handle different response types
+                if isinstance(response_data, dict):
+                    # Self-consistency case
+                    response = response_data["majority"]
+                    all_responses = response_data["all_responses"]
+                    extra_data = {
+                        "all_responses": all_responses,
+                        "majority_answer": response_data["majority_answer"],
+                        "answer_counts": response_data["answer_counts"],
+                    }
+                elif isinstance(response_data, list):
+                    # K-shot case
+                    all_responses = response_data
+                    response = response_data[0]  # Use first response for logging
+                    extra_data = {"all_responses": all_responses}
+                else:
+                    # Single response case
+                    response = response_data
+                    all_responses = [response_data]
+                    extra_data = {}
+
+                # Check if any response is correct for k-shot or self-consistency
+                is_correct = False
+                predicted_answers = []
+                for single_response in all_responses:
+                    pred_answer, single_correct = evaluate_model_response(
+                        single_response, correct_answer
+                    )
+                    predicted_answers.append(pred_answer)
+                    if single_correct:
+                        is_correct = True
+                        break
+
+                if is_correct:
+                    correct += 1
+                total += 1
+
+                # Update results_log
+                results_log.append(
+                    {
+                        "question": questions[j],
+                        "response": response,  # Primary response for display
+                        "predicted": predicted_answers,  # All predicted answers
+                        "correct": correct_answer,
+                        "prompt": batch_messages[j],
+                        "is_correct": is_correct,
+                        **extra_data,
+                    }
+                )
+
+                # Print progress after each example
+                if total % 10 == 0:  # Print every 10 examples
+                    print(
+                        f"Progress: {total}/{len(dataset)} - Current Accuracy: {(correct/total)*100:.2f}%"
+                    )
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+        model_name_short = model_name.split("/")[-1]
+        generate_fn_name = generate_fn.__name__  # Get the function name
+        results_file = f"results/evaluation_results-{model_name_short}-{generate_fn_name}-{timestamp}.json"
+        os.makedirs(os.path.dirname(results_file), exist_ok=True)
+        with open(results_file, "w") as f:
+            json.dump(results_log, f, indent=2, default=str)
+
+        print(f"\nFinal Accuracy: {(correct/total)*100:.2f}%")
+        return (correct / total) * 100
+
+    except Exception as e:
+        print(f"Evaluation failed with error: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
+        return None
+
+
+def test_evals(model_name):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.padding_side = "left"
+
+    # Instruct variants of models should already have a default chat template
+    chat_template = get_chat_template(tokenizer, model_name)
+    tokenizer.chat_template = chat_template
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    compare_evals(tokenizer)
+
+
+def load_model_and_tokenizer(model_name):
+    """Load model and tokenizer with standard configuration"""
     # Enable Flash Attention
     has_flash_attn = True
 
@@ -248,39 +393,7 @@ def run_evaluation(
         tokenizer.pad_token = tokenizer.eos_token
         model.config.pad_token_id = tokenizer.pad_token_id
 
-    try:
-        accuracy = batch_evaluate_gsm8k(
-            model_name,
-            model,
-            tokenizer,
-            batch_size=batch_size,
-            num_samples=num_samples,
-            instruction_prompt=instruction_prompt,
-            examples=examples,
-        )
-        print(f"\nFinal Accuracy: {accuracy:.2f}%")
-        return accuracy
-
-    except Exception as e:
-        print(f"Evaluation failed with error: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        return None
-
-
-def test_evals(model_name):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.padding_side = "left"
-
-    # Instruct variants of models should already have a default chat template
-    chat_template = get_chat_template(tokenizer, model_name)
-    tokenizer.chat_template = chat_template
-
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    compare_evals(tokenizer)
+    return model, tokenizer
 
 
 models = [
@@ -294,13 +407,49 @@ models = [
 
 if __name__ == "__main__":
     model_name = models[2]
+    model, tokenizer = load_model_and_tokenizer(model_name)
+
+    # accuracy = run_evaluation(
+    #     model=model,
+    #     tokenizer=tokenizer,
+    #     generate_fn=batch_generate,
+    #     batch_size=64,
+    #     instruction_prompt=full_gsm8k_zero_shot_prompt,
+    #     generate_kwargs={
+    #         "batch_size": 64,
+    #     },
+    # )
+    # print(f"Accuracy (regular): {accuracy:.2f}%")
 
     accuracy = run_evaluation(
-        model_name=model_name,
-        num_samples=None,
+        model=model,
+        tokenizer=tokenizer,
+        generate_fn=k_shot_generate,
         batch_size=64,
-        # examples=llama3_2_gsm8k_few_shot_examples,
+        num_samples=10,
         instruction_prompt=full_gsm8k_zero_shot_prompt,
+        generate_kwargs={
+            "k": 3,
+            "batch_size": 64,
+            "temperature": 0.7,
+        },
     )
+    print(f"Accuracy (k-shot): {accuracy:.2f}%")
+
+    accuracy = run_evaluation(
+        model=model,
+        tokenizer=tokenizer,
+        generate_fn=self_consistency_generate,
+        batch_size=64,
+        num_samples=10,
+        instruction_prompt=full_gsm8k_zero_shot_prompt,
+        generate_kwargs={
+            "k": 3,
+            "batch_size": 64,
+            "extract_fn": extract_answer,
+            "temperature": 0.7,
+        },
+    )
+    print(f"Accuracy (self-consistency): {accuracy:.2f}%")
 
     # test_evals(model_name)

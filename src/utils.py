@@ -1,4 +1,5 @@
 import re
+from datasets import load_dataset
 
 
 def format_few_shot_examples(examples):
@@ -70,3 +71,11 @@ def extract_answer(response):
     except Exception as e:
         print(f"Error extracting answer from: {response}")
         return None
+
+
+def get_gsm8k_answers():
+    dataset = load_dataset("gsm8k", "main")["test"]
+    correct_answers = [
+        parse_number(answer.split("####")[-1].strip()) for answer in dataset["answer"]
+    ]
+    return correct_answers

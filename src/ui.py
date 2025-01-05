@@ -84,10 +84,10 @@ def main():
         example = examples[current_idx]
 
         st.subheader("Problem")
-        st.code(example["question"], language=None, wrap_lines=True)
+        st.code(example["question"], language=None, wrap_lines=True, line_numbers=True)
 
         st.subheader("Solution")
-        st.code(example["answer"], language=None, wrap_lines=True)
+        st.code(example["answer"], language=None, wrap_lines=True, line_numbers=True)
 
         # Display metadata
         with st.expander("Metadata"):
