@@ -1,0 +1,30 @@
+[
+  {
+    "text": "The blue car costs $100. The red car is 40% cheaper, so we need to find 40% of $100. 40% of $100 is 0.4 x $100 = $40. So the red car is $100 - $40 = $60 cheaper than the blue car. The red car costs $100 - $40 = $60. The blue car costs $100 and the red car costs $60. The final answer is $100 and $60.",
+    "our_parsed": 60.0,
+    "llama_parsed": 100.0,
+    "is_match": false,
+    "llama_is_correct": false
+  },
+  {
+    "text": "Jeff started with 8 dozen glasses and 4 dozen plates. 1 dozen is 12, so he had 8 x 12 = 96 glasses and 4 x 12 = 48 plates. 10 glasses were broken, so he has 96 - 10 = 86 glasses. 6 plates were broken, so he has 48 - 6 = 42 plates. The final answer is 86 glasses and 42 plates.",
+    "our_parsed": 42.0,
+    "llama_parsed": 8642.0,
+    "is_match": false,
+    "llama_is_correct": false
+  },
+  {
+    "text": "To find the latest start time, we need to add up the time it takes to make the cake. The cake takes 20 minutes to make the batter, 30 minutes to bake, 2 hours (120 minutes) to cool, and 10 minutes to frost. \n\nFirst, we add the time to make the batter and bake the cake: 20 + 30 = 50 minutes. \n\nThen, we add the time to cool the cake: 50 + 120 = 170 minutes. \n\nFinally, we add the time to frost the cake: 170 + 10 = 180 minutes.\n\nSince there are 60 minutes in an hour, we can convert 180 minutes to hours and minutes: 180 minutes = 3 hours.\n\nSo, the total time it takes to make the cake is 3 hours. \n\nIf Jordan wants to serve the cake at 5:00 pm, we need to subtract 3 hours from 5:00 pm. 5:00 pm - 3 hours = 2:00 pm.\n\nThe final answer is 2:00 pm",
+    "our_parsed": 0.0,
+    "llama_parsed": 200.0,
+    "is_match": false,
+    "llama_is_correct": false
+  },
+  {
+    "text": "Olivia uploaded 72 pictures. She put the same number of pictures into 8 albums. So each album has 72 / 8 = 9 pictures. 3 albums are selfies only, so that's 3 x 9 = 27 selfies. 2 albums are portraits, so that's 2 x 9 = 18 portraits. The final answer is 18 and 27.",
+    "our_parsed": 27.0,
+    "llama_parsed": 1827.0,
+    "is_match": false,
+    "llama_is_correct": false
+  }
+]

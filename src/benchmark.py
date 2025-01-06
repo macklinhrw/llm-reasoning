@@ -234,7 +234,20 @@ def run_evaluation(
         correct = 0
         total = 0
 
-        results_log = []
+        # Create results dictionary with metadata
+        results_data = {
+            "parameters": {
+                "model_name": model.config._name_or_path,
+                "generation_method": generate_fn.__name__,
+                "batch_size": batch_size,
+                "num_samples": num_samples,
+                "has_instruction_prompt": instruction_prompt is not None,
+                "has_examples": examples is not None,
+                "generate_kwargs": generate_kwargs,
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d-%H-%M"),
+            },
+            "results": [],  # This will store the individual evaluation results
+        }
 
         for i in tqdm(range(0, len(dataset), batch_size)):
             batch_slice = slice(i, min(i + batch_size, len(dataset)))
@@ -294,24 +307,33 @@ def run_evaluation(
                     all_responses = [response_data]
                     extra_data = {}
 
-                # Check if any response is correct for k-shot or self-consistency
-                is_correct = False
-                predicted_answers = []
-                for single_response in all_responses:
-                    pred_answer, single_correct = evaluate_model_response(
-                        single_response, correct_answer
+                # Check correctness based on generation method
+                if isinstance(response_data, dict):
+                    # Self-consistency case - only check majority answer
+                    response = response_data["majority"]
+                    predicted_answer, is_correct = evaluate_model_response(
+                        response, correct_answer
                     )
-                    predicted_answers.append(pred_answer)
-                    if single_correct:
-                        is_correct = True
-                        break
+                    predicted_answers = [predicted_answer]
+                else:
+                    # K-shot case - check if any response is correct
+                    is_correct = False
+                    predicted_answers = []
+                    for single_response in all_responses:
+                        pred_answer, single_correct = evaluate_model_response(
+                            single_response, correct_answer
+                        )
+                        predicted_answers.append(pred_answer)
+                        if single_correct:
+                            is_correct = True
+                            break
 
                 if is_correct:
                     correct += 1
                 total += 1
 
-                # Update results_log
-                results_log.append(
+                # Update results_data["results"]
+                results_data["results"].append(
                     {
                         "question": questions[j],
                         "response": response,  # Primary response for display
@@ -329,15 +351,19 @@ def run_evaluation(
                         f"Progress: {total}/{len(dataset)} - Current Accuracy: {(correct/total)*100:.2f}%"
                     )
 
+        # Save results
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
-        model_name_short = model_name.split("/")[-1]
-        generate_fn_name = generate_fn.__name__  # Get the function name
+        model_name_short = model.config._name_or_path.split("/")[-1]
+        generate_fn_name = generate_fn.__name__
         results_file = f"results/evaluation_results-{model_name_short}-{generate_fn_name}-{timestamp}.json"
         os.makedirs(os.path.dirname(results_file), exist_ok=True)
-        with open(results_file, "w") as f:
-            json.dump(results_log, f, indent=2, default=str)
 
-        print(f"\nFinal Accuracy: {(correct/total)*100:.2f}%")
+        # Add final accuracy to parameters
+        results_data["parameters"]["final_accuracy"] = (correct / total) * 100
+
+        with open(results_file, "w") as f:
+            json.dump(results_data, f, indent=2, default=str)
+
         return (correct / total) * 100
 
     except Exception as e:
@@ -426,8 +452,8 @@ if __name__ == "__main__":
         tokenizer=tokenizer,
         generate_fn=k_shot_generate,
         batch_size=64,
-        num_samples=10,
-        instruction_prompt=full_gsm8k_zero_shot_prompt,
+        num_samples=None,
+        # instruction_prompt=full_gsm8k_zero_shot_prompt,
         generate_kwargs={
             "k": 3,
             "batch_size": 64,
@@ -441,8 +467,8 @@ if __name__ == "__main__":
         tokenizer=tokenizer,
         generate_fn=self_consistency_generate,
         batch_size=64,
-        num_samples=10,
-        instruction_prompt=full_gsm8k_zero_shot_prompt,
+        num_samples=None,
+        # instruction_prompt=full_gsm8k_zero_shot_prompt,
         generate_kwargs={
             "k": 3,
             "batch_size": 64,
