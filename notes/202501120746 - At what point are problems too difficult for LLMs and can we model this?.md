@@ -84,11 +84,14 @@ related:: [[2025-01-12]]
 	- Maybe I can't imagine them all right now, but I should get an idea of whether they exist so I can judge whether the experiment is possible or not.
 	- Categories
 		- Misunderstood the problem
+			- Can this be attributed to different more useful difficulty categories? Or is this category useful enough. I feel like this can be decomposed into problem-specific difficulty factors.
 		- Commonsense
 		- Arithmetic
 		- Minimum Required Reasoning Steps (Needs concrete examples)
 			- How do we know this is the cause of the model error?
-			- 
+			- Intuition: The model is **unable to represent the dependency graph**, as a result it doesn't know what it can compute, or whether particular variables that it needs to compute depends on another variable. As a result it will make an error which could be a hallucination, 
+			- The issue is that the cause and effect chain is uncertain. There could be multiple types of errors that are caused by this, but linking them back could be difficult.
+			- This could also be the case for other types of error categories I haven't yet thought of. Overall this could make annotating this kind of difficulty data impractical or impossible with a decent accuracy and consistency.
 	- I think the categories above have some potential. However, I would need to do some more thinking an analysis to really refine the best possible difficulty categories.
 	- Not just solution length, which I hypothesized, but all of these could use some concrete examples.
 	- Scaling
