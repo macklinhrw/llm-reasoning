@@ -700,7 +700,17 @@ def main():
                     # Add pagination
                     items_per_page = 10
                     total_pages = (len(filtered_annotations) + items_per_page - 1) // items_per_page
-                    current_page = st.number_input("Page", 1, total_pages, 1) - 1
+
+                    # Handle empty results case
+                    if total_pages > 0:
+                        current_page = st.number_input(
+                            "Page", 
+                            min_value=1, 
+                            max_value=total_pages, 
+                            value=1
+                        ) - 1
+                    else:
+                        current_page = 0
                     
                     start_idx = current_page * items_per_page
                     end_idx = min(start_idx + items_per_page, len(filtered_annotations))
