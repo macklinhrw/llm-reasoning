@@ -112,11 +112,11 @@ def display_analysis_results(data):
 def display_problem_details(problem, show_generations=False):
     """Display problem details in a structured way."""
     st.subheader("Problem")
-    st.code(problem["question"], language='text')
+    st.code(problem["question"], language='text', wrap_lines=True)
     
     if "solution" in problem:
         st.subheader("Solution")
-        st.code(problem["solution"], language='text')
+        st.code(problem["solution"], language='text', wrap_lines=True)
 
     # Display metrics in columns
     col1, col2, col3 = st.columns(3)
