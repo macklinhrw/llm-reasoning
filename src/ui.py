@@ -471,11 +471,17 @@ def main():
                     st.subheader("Problem Statement")
                     st.markdown(f"```\n{example.get('question', example.get('input_question', 'N/A'))}\n```")
                     
+                    # Display primary response
+                    if "response" in example:
+                        st.subheader("Model Response")
+                        st.code(example["response"], language="markdown", wrap_lines=True)
+
+                    # Display all responses if available
                     if "all_responses" in example:
-                        with st.expander(f"View All Responses ({len(example['all_responses'])})", expanded=False):
+                        with st.expander(f"View All {len(example['all_responses'])} Responses", expanded=False):
                             for i, resp in enumerate(example["all_responses"], 1):
                                 st.markdown(f"**Response {i}**")
-                                st.code(resp, language="markdown")
+                                st.code(resp, language="markdown", wrap_lines=True)
                 
                 with col2:
                     st.subheader("Answers")
