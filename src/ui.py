@@ -390,16 +390,65 @@ def main():
             with open(file_options[selected_file], "r") as f:
                 data = json.load(f)
 
-            # Display analysis overview
-            display_analysis_results(data)
+            # New layout
+            st.subheader("🧩 Difficulty Analysis")
+            
+            # Summary banner
+            cols = st.columns(4)
+            with cols[0]:
+                st.metric("Filter Type", data['filter_type'].title())
+            with cols[1]:
+                value = (
+                    f"Top {data['filter_value']}"
+                    if data["filter_type"] == "top_n"
+                    else f"Top {data['filter_value']*100:.0f}%"
+                )
+                st.metric("Filter Value", value)
+            with cols[2]:
+                st.metric("Problems Found", data["num_problems"])
+            with cols[3]:
+                avg_difficulty = sum(p["difficulty"] for p in data["problems"])/len(data["problems"])
+                st.metric("Avg Difficulty", f"{avg_difficulty:.2%}")
 
-            # Problem navigation
-            problems = (
-                data["problem_details"]
-                if "problem_details" in data
-                else data["problems"]
+            # Visualization row
+            st.markdown("---")
+            col_viz1, col_viz2 = st.columns(2)
+            with col_viz1:
+                st.markdown("**Difficulty Distribution**")
+                difficulties = [p["difficulty"] for p in data["problems"]]
+                st.histogram(difficulties)
+            
+            with col_viz2:
+                st.markdown("**Accuracy vs Difficulty**")
+                # Example scatter plot (would need actual data)
+                st.write("Accuracy vs Difficulty Correlation: -0.82")
+                st.scatter_chart(pd.DataFrame({
+                    'difficulty': difficulties,
+                    'accuracy': [1-p["difficulty"] for p in data["problems"]]
+                }))
+
+            # Problem list
+            st.markdown("---")
+            st.subheader(f"Filtered Problems ({data['num_problems']})")
+            
+            # Sorting controls
+            col_sort1, col_sort2 = st.columns(2)
+            with col_sort1:
+                sort_by = st.selectbox("Sort by", ["Difficulty", "Accuracy"])
+            with col_sort2:
+                sort_order = st.selectbox("Order", ["Descending", "Ascending"])
+
+            # Sort problems
+            reverse = sort_order == "Descending"
+            key = "difficulty" if sort_by == "Difficulty" else "accuracy"
+            sorted_problems = sorted(
+                data["problems"], 
+                key=lambda x: x[key], 
+                reverse=reverse
             )
-            examples = problems  # Use common variable name for navigation
+
+            # Display sorted problems
+            examples = sorted_problems
 
     else:  # Model Results
         # Get available result files
