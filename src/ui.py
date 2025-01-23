@@ -20,16 +20,24 @@ def load_gsm8k_data():
 def get_result_files(directory="results"):
     """Get all available result files from different subdirectories."""
     file_patterns = {
+        "Model Results": [
+            os.path.join(directory, "*.json"),
+            os.path.join(directory, "*.jsonl")
+        ],
         "Incorrect Results": os.path.join(directory, "incorrect", "*.jsonl"),
         "Analysis Results": os.path.join(directory, "analysis", "*.json"),
-        "Difficulty Analysis": os.path.join(
-            directory, "analysis", "difficulty", "*.json"
-        ),
+        "Difficulty Analysis": os.path.join(directory, "analysis", "difficulty", "*.json"),
     }
 
     files = {}
-    for category, pattern in file_patterns.items():
-        category_files = glob.glob(pattern)
+    for category, patterns in file_patterns.items():
+        if isinstance(patterns, str):
+            patterns = [patterns]
+        
+        category_files = []
+        for pattern in patterns:
+            category_files.extend(glob.glob(pattern))
+
         if category_files:
             # Sort files by modification time (newest first)
             category_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
@@ -40,7 +48,7 @@ def get_result_files(directory="results"):
 
 @st.cache_resource
 def load_results_file(file_path):
-    """Load results from a single JSON/JSONL file."""
+    """Load results from a single JSON/JSONL file with flexible format handling."""
     results = []
     try:
         if file_path.endswith(".jsonl"):
@@ -51,10 +59,17 @@ def load_results_file(file_path):
         else:
             with open(file_path, "r") as f:
                 data = json.load(f)
+                
+                # Handle different JSON structures
                 if isinstance(data, list):
-                    results.extend(data)
-                elif isinstance(data, dict):
+                    results = data
+                elif "results" in data:  # Format with metadata + results list
+                    results = data["results"]
+                elif "problem_details" in data:  # Analysis format
+                    results = data["problem_details"]
+                else:  # Single result format
                     results.append(data)
+
     except Exception as e:
         st.error(f"Error loading {file_path}: {str(e)}")
 
@@ -259,7 +274,7 @@ def main():
             )
             examples = problems  # Use common variable name for navigation
 
-    else:  # Original Model Results
+    else:  # Model Results
         # Get available result files
         file_options = get_result_files()
         if not file_options:
@@ -280,6 +295,26 @@ def main():
             if not examples:
                 st.warning("No results found in selected file.")
                 return
+
+        # Display model metadata if available
+        if isinstance(examples[0], dict) and "model_name" in examples[0]:
+            st.sidebar.subheader("Model Info")
+            st.sidebar.write(f"Model: {examples[0]['model_name']}")
+            if "generation_method" in examples[0]:
+                st.sidebar.write(f"Method: {examples[0]['generation_method']}")
+            if "timestamp" in examples[0]:
+                st.sidebar.write(f"Run: {examples[0]['timestamp']}")
+
+        # Display metrics if available
+        if "accuracy" in examples[0]:
+            cols = st.columns(3)
+            with cols[0]:
+                st.metric("Total Problems", len(examples))
+            with cols[1]:
+                st.metric("Accuracy", f"{examples[0]['accuracy']:.2%}")
+            with cols[2]:
+                if "temperature" in examples[0]:
+                    st.metric("Temperature", examples[0]['temperature'])
 
     total_examples = len(examples)
     st.sidebar.markdown(f"Total examples: {total_examples}")
@@ -326,21 +361,38 @@ def main():
             st.code(example["question"], language=None)
             st.subheader("Solution")
             st.code(example["answer"], language=None)
-        else:  # Model Results
+        elif data_source == "Model Results":
             st.subheader("Problem")
-            st.code(example.get("question", "N/A"), language=None, wrap_lines=True)
+            st.code(example.get("question", example.get("input_question", "N/A")), 
+                    language=None, 
+                    wrap_lines=True)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if "correct_answer" in example:
+                    st.metric("Correct Answer", example["correct_answer"])
+                elif "target" in example:
+                    st.metric("Target Answer", example["target"])
+                
+                if "predicted_answer" in example:
+                    status = "✅" if example.get("is_correct", False) else "❌"
+                    st.metric(f"Predicted Answer {status}", example["predicted_answer"])
+
+            with col2:
+                if "confidence" in example:
+                    st.metric("Confidence", f"{example['confidence']:.2%}")
+                if "temperature" in example:
+                    st.metric("Temperature", example["temperature"])
 
             if "response" in example:
-                st.subheader("Model Response")
-                st.code(example["response"], language=None, wrap_lines=True)
+                with st.expander("Model Response"):
+                    st.code(example["response"], language="markdown", wrap_lines=True)
 
-            if "target" in example and "predicted" in example:
-                st.subheader("Results")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Target", example["target"])
-                with col2:
-                    st.metric("Predicted", example["predicted"])
+            if "all_responses" in example:
+                with st.expander(f"All Responses ({len(example['all_responses'])})"):
+                    for i, resp in enumerate(example["all_responses"], 1):
+                        st.markdown(f"**Response {i}**")
+                        st.code(resp, language="markdown", wrap_lines=True)
 
         # Display all metadata
         with st.expander("Raw Data"):
