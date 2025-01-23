@@ -3,6 +3,8 @@ from datasets import load_dataset
 import json
 import glob
 import os
+import re
+from datetime import datetime
 from utils import extract_answer
 
 
@@ -78,25 +80,21 @@ def load_results_file(file_path):
 
 def parse_result_filename(filename):
     """Extract metadata from result filenames."""
-    parts = filename.replace(".json", "").replace(".jsonl", "").split("-")
     metadata = {
         "full_name": filename,
         "display_name": filename.replace("evaluation_results-", "").replace(".json", "")
     }
     
-    # Try to extract model name
-    model_parts = []
-    for part in parts[2:]:  # Skip initial "evaluation_results"
-        if part.isdigit() and len(part) == 4:  # Year starts the date
-            break
-        model_parts.append(part)
-    metadata["model"] = " ".join(model_parts).replace("_", " ").title()
+    # Extract model name and date using regex
+    model_match = re.search(r"evaluation_results-(.*?)(-\d{4}-\d{2}-\d{2})", filename)
+    if model_match:
+        model_parts = model_match.group(1).split("-")
+        metadata["model"] = " ".join([p.upper() if p == "b" else p.capitalize() for p in model_parts])
     
-    # Try to extract date
-    date_parts = [p for p in parts if len(p) == 8 and p.isdigit()]
-    if date_parts:
-        date_str = date_parts[0]
-        metadata["date"] = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+    # Extract date from filename
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", filename)
+    if date_match:
+        metadata["date"] = datetime.strptime(date_match.group(1), "%Y-%m-%d").strftime("%b %d, %Y")
     
     return metadata
 
@@ -314,42 +312,41 @@ def main():
         # Create sidebar filters
         st.sidebar.subheader("Filter Results")
         
-        # Model selection
-        unique_models = sorted({fd["model"] for fd in file_data if fd["model"]}, 
-                             key=lambda x: x.split()[-1])  # Sort by model size
-        selected_model = st.sidebar.selectbox(
-            "Model Family",
-            options=["All Models"] + unique_models,
-            index=0
-        )
-        
-        # Date selection
-        unique_dates = sorted({fd.get("date") for fd in file_data if fd.get("date")}, 
-                            reverse=True)
-        selected_date = st.sidebar.selectbox(
-            "Date",
-            options=["All Dates"] + unique_dates,
-            index=0
-        )
-        
-        # Search bar
-        search_term = st.sidebar.text_input("Search files", "").lower()
-        
-        # Filter files
-        filtered_files = [
-            f for f in file_data
-            if (selected_model == "All Models" or f["model"] == selected_model) and
-            (selected_date == "All Dates" or f.get("date") == selected_date) and
-            search_term in f["full_name"].lower()
-        ]
-        
-        # File selection with formatted names
-        selected_file = st.sidebar.selectbox(
-            "Choose results file",
-            options=[f["full_name"] for f in filtered_files],
-            format_func=lambda x: next(f["display_name"] for f in filtered_files if f["full_name"] == x),
-            help="Files sorted by modification date (newest first)"
-        )
+        with st.sidebar:
+            with st.expander("🔍 Search Filters", expanded=True):
+                search_term = st.text_input("Search files", "", 
+                                          placeholder="Model name or date...",
+                                          help="Search by model family, date, or method")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    unique_models = sorted({fd["model"] for fd in file_data if fd["model"]}, 
+                                         key=lambda x: x.split()[-1])  # Sort by model size
+                    selected_model = st.selectbox(
+                        "Model Family", ["All Models"] + unique_models, index=0
+                    )
+                with col2:
+                    unique_dates = sorted({fd.get("date") for fd in file_data if fd.get("date")}, 
+                                        reverse=True)
+                    selected_date = st.selectbox(
+                        "Date", ["All Dates"] + unique_dates, index=0
+                    )
+
+            st.markdown("---")
+            st.markdown("**Selected File**")
+            filtered_files = [
+                f for f in file_data
+                if (selected_model == "All Models" or f["model"] == selected_model) and
+                (selected_date == "All Dates" or f.get("date") == selected_date) and
+                search_term in f["full_name"].lower()
+            ]
+            selected_file = st.selectbox(
+                "Choose results file",
+                options=[f["full_name"] for f in filtered_files],
+                format_func=lambda x: next(f["display_name"] for f in filtered_files if f["full_name"] == x),
+                help="Files sorted by modification date (newest first)",
+                label_visibility="collapsed"
+            )
         
         if not selected_file:
             st.warning("No files match filters")
@@ -364,19 +361,20 @@ def main():
 
         # Summary header
         st.subheader("Results Summary")
-        
+        params = loaded_data.get("parameters", {})
+
         cols = st.columns(4)
         with cols[0]:
             st.metric("Total Problems", len(examples))
         with cols[1]:
-            if "accuracy" in examples[0]:
-                st.metric("Accuracy", f"{examples[0]['accuracy']:.2%}")
+            if "final_accuracy" in params:
+                st.metric("Accuracy", f"{params['final_accuracy']:.2f}%")
         with cols[2]:
-            if "temperature" in examples[0]:
-                st.metric("Temperature", examples[0]['temperature'])
+            temp = params.get("generate_kwargs", {}).get("temperature", "N/A")
+            st.metric("Temperature", temp)
         with cols[3]:
-            if "generation_method" in examples[0]:
-                st.metric("Method", examples[0]['generation_method'].title())
+            method = params.get("generation_method", "N/A").replace("_", " ").title()
+            st.metric("Method", method)
         
         st.markdown("---")  # Horizontal line
 
@@ -446,18 +444,19 @@ def main():
                     answer_col1, answer_col2 = st.columns(2)
                     
                     with answer_col1:
-                        st.markdown("### Correct Answer")
-                        correct_answer = example.get("correct_answer", example.get("target", "N/A"))
-                        st.markdown(f"<h2 style='color: #2ecc71;'>{correct_answer}</h2>", 
-                                  unsafe_allow_html=True)
-                    
+                        correct_answer = example.get("correct") or example.get("correct_answer") or example.get("target")
+                        st.markdown(f"### Correct Answer")
+                        if correct_answer is not None:
+                            st.markdown(f"<h2 style='color: #2ecc71;'>{correct_answer}</h2>", unsafe_allow_html=True)
+                        else:
+                            st.warning("No correct answer found in data")
+
                     with answer_col2:
-                        st.markdown("### Model Prediction")
-                        pred_answer = example.get("predicted_answer", "N/A")
+                        pred_answer = example.get("predicted_answer") or example.get("predicted") or "N/A"
                         is_correct = example.get("is_correct", False)
                         color = "#2ecc71" if is_correct else "#e74c3c"
-                        st.markdown(f"<h2 style='color: {color};'>{pred_answer}</h2>", 
-                                  unsafe_allow_html=True)
+                        st.markdown(f"### Model Prediction")
+                        st.markdown(f"<h2 style='color: {color};'>{pred_answer}</h2>", unsafe_allow_html=True)
                     
                     if "confidence" in example:
                         st.metric("Confidence Score", f"{example['confidence']:.2%}",
