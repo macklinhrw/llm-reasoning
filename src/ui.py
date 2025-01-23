@@ -56,6 +56,24 @@ def load_results_file(file_path):
                 for line in f:
                     if line.strip():
                         results.append(json.loads(line))
+        else:
+            with open(file_path, "r") as f:
+                data = json.load(f)
+                
+                # Handle different JSON structures
+                if isinstance(data, list):
+                    results = data
+                elif "results" in data:  # Format with metadata + results list
+                    results = data["results"]
+                elif "problem_details" in data:  # Analysis format
+                    results = data["problem_details"]
+                else:  # Single result format
+                    results.append(data)
+
+    except Exception as e:
+        st.error(f"Error loading {file_path}: {str(e)}")
+
+    return results
 
 
 def parse_result_filename(filename):
@@ -81,24 +99,6 @@ def parse_result_filename(filename):
         metadata["date"] = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
     
     return metadata
-        else:
-            with open(file_path, "r") as f:
-                data = json.load(f)
-                
-                # Handle different JSON structures
-                if isinstance(data, list):
-                    results = data
-                elif "results" in data:  # Format with metadata + results list
-                    results = data["results"]
-                elif "problem_details" in data:  # Analysis format
-                    results = data["problem_details"]
-                else:  # Single result format
-                    results.append(data)
-
-    except Exception as e:
-        st.error(f"Error loading {file_path}: {str(e)}")
-
-    return results
 
 
 def display_analysis_results(data):
