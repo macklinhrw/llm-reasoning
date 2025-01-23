@@ -245,9 +245,9 @@ def display_problem_card(problem):
             st.markdown("**Performance Metrics**")
             st.write(f"- Correct Generations: {problem['num_correct']}/{problem['num_generations']}")
             if 'difficulty' in problem:
-                st.write(f"- Independent Difficulty: {problem['difficulty']:.2%}")
+                st.write(f"- Difficulty: {problem['difficulty']:.2%}")
             else:
-                st.write(f"- Derived Difficulty (1 - Accuracy): {derived_difficulty:.2%}")
+                st.write(f"- Difficulty (1 - Accuracy): {derived_difficulty:.2%}")
 
     st.markdown("---")
 
@@ -417,45 +417,27 @@ def main():
 
             # Visualization row
             st.markdown("---")
-            col_viz1, col_viz2 = st.columns(2)
-            with col_viz1:
-                st.markdown("**Accuracy Distribution**")
-                accuracies = [p["accuracy"] for p in data["problems"]]
-                bin_edges = np.linspace(0, 1, 21)
-                hist, bin_edges = np.histogram(accuracies, bins=bin_edges)
-                bin_labels = [f"{bin_edges[i]:.2f}-{bin_edges[i+1]:.2f}" for i in range(len(bin_edges)-1)]
+            st.markdown("**Difficulty Distribution**")
+            difficulties = [1 - p["accuracy"] for p in data["problems"]]  # Calculate difficulty
+            bin_edges = np.linspace(0, 1, 21)
+            hist, bin_edges = np.histogram(difficulties, bins=bin_edges)
+            bin_labels = [f"{bin_edges[i]:.2f}-{bin_edges[i+1]:.2f}" for i in range(len(bin_edges)-1)]
 
-                chart_df = pd.DataFrame({
-                    'Accuracy Range': bin_labels,
-                    'Number of Problems': hist
-                }).set_index('Accuracy Range')
+            chart_df = pd.DataFrame({
+                'Difficulty Range': bin_labels,
+                'Number of Problems': hist
+            }).set_index('Difficulty Range')
 
-                st.bar_chart(chart_df, use_container_width=True)
-
-            with col_viz2:
-                st.markdown("**Performance Correlation**")
-                if 'difficulty' in data["problems"][0]:
-                    # Show actual difficulty correlation if available
-                    difficulties = [p["difficulty"] for p in data["problems"]]
-                    st.scatter_chart(pd.DataFrame({
-                        'Independent Difficulty': difficulties,
-                        'Accuracy': [p["accuracy"] for p in data["problems"]]
-                    }))
-                else:
-                    # Show derived relationship when difficulty is 1-accuracy
-                    st.write("All problems sorted by accuracy")
-                    st.line_chart(pd.DataFrame({
-                        'Accuracy': sorted([p["accuracy"] for p in data["problems"]], reverse=True)
-                    }))
+            st.bar_chart(chart_df, use_container_width=True)
 
             # Problem list
             st.markdown("---")
             st.subheader(f"Filtered Problems ({data['num_problems']})")
-            
-            # Sorting controls
+
+            # Sorting controls (removed accuracy option)
             col_sort1, col_sort2 = st.columns(2)
             with col_sort1:
-                sort_by = st.selectbox("Sort by", ["Difficulty", "Accuracy"])
+                sort_by = st.selectbox("Sort by", ["Difficulty"])  # Only difficulty option
             with col_sort2:
                 sort_order = st.selectbox("Order", ["Descending", "Ascending"])
 
