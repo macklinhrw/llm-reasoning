@@ -674,6 +674,21 @@ def main():
                     save_annotations(file_options[selected_file], st.session_state.annotations)
                     st.success("Annotation saved!")
                 
+                # Add delete button for existing annotations
+                if problem_id in st.session_state.annotations:
+                    st.markdown("---")
+                    if st.button("🗑️ Delete Annotation", type="primary"):
+                        confirm = st.warning("Are you sure you want to delete this annotation?")
+                        if st.button("Confirm Delete", key=f"confirm_del_{problem_id}"):
+                            del st.session_state.annotations[problem_id]
+                            save_annotations(file_options[selected_file], st.session_state.annotations)
+                            st.success("Annotation deleted!")
+                            st.session_state.current_idx = min(
+                                st.session_state.current_idx, 
+                                len(examples) - 2
+                            )  # Adjust index if needed
+                            st.rerun()
+                
 
             with tab_browser:
                 st.subheader("Annotations Browser")
@@ -741,6 +756,15 @@ def main():
                                         st.markdown(f"- `{t}`")
                                 else:
                                     st.markdown("*No types specified*")
+                                
+                                # Add delete button with confirmation
+                                if st.button("🗑️ Delete", key=f"delete_{hash(q)}"):  # Using hash for unique key
+                                    confirm = st.warning("Are you sure you want to delete this annotation?")
+                                    if st.button("Confirm Delete", key=f"confirm_delete_{hash(q)}"):
+                                        del st.session_state.annotations[q]
+                                        save_annotations(file_options[selected_file], st.session_state.annotations)
+                                        st.success("Annotation deleted!")
+                                        st.rerun()
                                 
                                 if st.button("Go to Annotation", key=f"goto_{q[:20]}"):
                                     problem_ids = [p["question"] for p in examples]
