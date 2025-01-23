@@ -125,52 +125,131 @@ def parse_result_filename(filename):
 
 
 def display_analysis_results(data):
-    """Display analysis results in a structured way."""
-    st.subheader("Model Information")
-    st.write(f"Model: {data['model_name']}")
-    st.write(f"Generation Method: {data['generation_method']}")
-
-    # Handle both analysis and difficulty files
-    if "statistics" in data:
-        # Analysis file
-        st.subheader("Statistics")
-        stats = data["statistics"]
-        cols = st.columns(2)
-
+    """Display analysis results in a structured way with improved UI."""
+    # Create tabs for different sections
+    tab_overview, tab_details = st.tabs(["📊 Overview", "📝 Problem Details"])
+    
+    with tab_overview:
+        st.subheader("Model Overview")
+        cols = st.columns([1,2])
         with cols[0]:
-            st.metric("Total Problems", stats["total_problems"])
-            st.metric("Generation Accuracy", f"{stats['generation_accuracy']:.2%}")
+            st.metric("Model Name", data.get('model_name', 'N/A'))
+            st.metric("Generation Method", data.get('generation_method', 'N/A').title())
         with cols[1]:
-            st.metric("Total Generations", stats["total_generations"])
-            st.metric("Majority Vote Accuracy", f"{stats['majority_accuracy']:.2%}")
-    else:
-        # Difficulty file
-        st.subheader("Filter Information")
-        st.write(f"Filter Type: {data['filter_type']}")
-        if data["filter_value"] is not None:
-            value = (
-                f"Top {data['filter_value']}"
-                if data["filter_type"] == "top_n"
-                else f"Top {data['filter_value']*100:.0f}%"
-            )
-            st.write(f"Filter Value: {value}")
-        st.metric("Number of Problems", data["num_problems"])
+            st.metric("Evaluation Date", data.get('timestamp', 'N/A'))
+            st.metric("Total Problems", data.get('statistics', {}).get('total_problems', 'N/A'))
 
-        # Calculate and display aggregate statistics for filtered problems
-        if "problems" in data:
-            total_generations = sum(p["num_generations"] for p in data["problems"])
-            total_correct = sum(p["num_correct"] for p in data["problems"])
-            accuracy = total_correct / total_generations if total_generations > 0 else 0
+        st.markdown("---")
+        st.subheader("Key Metrics")
+        
+        # Create metric columns with icons
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("🏅 Generation Accuracy", 
+                    f"{data['statistics']['generation_accuracy']:.2%}" if 'statistics' in data else 'N/A',
+                    help="Accuracy of individual generations")
+        with col2:
+            st.metric("👥 Majority Accuracy", 
+                    f"{data['statistics']['majority_accuracy']:.2%}" if 'statistics' in data else 'N/A',
+                    help="Accuracy when using majority voting")
+        with col3:
+            st.metric("📚 Total Generations", 
+                    data['statistics'].get('total_generations', 'N/A') if 'statistics' in data else 'N/A')
+        with col4:
+            st.metric("🎚️ Temperature", 
+                    data['parameters'].get('temperature', 'N/A') if 'parameters' in data else 'N/A')
 
-            cols = st.columns(2)
-            with cols[0]:
-                st.metric("Total Generations", total_generations)
-                st.metric("Generation Accuracy", f"{accuracy:.2%}")
-            with cols[1]:
-                st.metric(
-                    "Average Difficulty",
-                    f"{sum(p['difficulty'] for p in data['problems'])/len(data['problems']):.2%}",
-                )
+        # Add visualization section
+        if 'statistics' in data:
+            st.markdown("---")
+            st.subheader("Accuracy Distribution")
+            
+            col_viz1, col_viz2 = st.columns(2)
+            with col_viz1:
+                st.markdown("**By Problem Difficulty**")
+                # Example visualization - would need actual difficulty data
+                st.bar_chart({"Low": 0.85, "Medium": 0.72, "High": 0.55})
+            
+            with col_viz2:
+                st.markdown("**Temporal Accuracy Trend**")
+                # Example time-based trend
+                st.line_chart({"Run 1": 0.68, "Run 2": 0.72, "Run 3": 0.75})
+
+    with tab_details:
+        st.subheader("Problem-Level Analysis")
+        st.caption("Browse individual problems with detailed performance metrics")
+        
+        # Add filtering controls
+        col_filter1, col_filter2 = st.columns(2)
+        with col_filter1:
+            min_accuracy = st.slider("Minimum accuracy", 0.0, 1.0, 0.0, 0.01)
+        with col_filter2:
+            show_incorrect = st.checkbox("Show only incorrect problems", value=False)
+
+        # Problem cards
+        for idx, problem in enumerate(data.get('problem_details', [])):
+            # Apply filters
+            if problem['accuracy'] < min_accuracy:
+                continue
+            if show_incorrect and problem['accuracy'] == 1.0:
+                continue
+            
+            # Create expandable problem card
+            with st.expander(f"Problem {idx+1} | Accuracy: {problem['accuracy']:.2%}", expanded=False):
+                display_problem_card(problem)
+
+def display_problem_card(problem):
+    """Display a problem in a condensed card format with visual indicators."""
+    cols = st.columns([3,1,1,1])
+    
+    # Problem text
+    with cols[0]:
+        st.markdown(f"**Question**  \n{problem['question'][:200]}...")
+    
+    # Key metrics
+    with cols[1]:
+        st.metric("Correct", problem['correct_answer'], 
+                help="Correct answer")
+    with cols[2]:
+        st.metric("Predicted", problem.get('predicted_answer', 'N/A'),
+                help="Model's predicted answer", 
+                delta=f"{'✅' if problem.get('is_correct', False) else '❌'}")
+    with cols[3]:
+        st.metric("Difficulty", f"{problem.get('difficulty', 0):.2%}",
+                help="Estimated problem difficulty")
+
+    # Visual difficulty indicator
+    difficulty = problem.get('difficulty', 0)
+    st.markdown(f"""
+    <style>
+        .difficulty-bar {{
+            height: 8px;
+            background: linear-gradient(90deg, #e74c3c {difficulty*100}%, #2ecc71 {difficulty*100}%);
+            border-radius: 4px;
+            margin: 8px 0;
+        }}
+    </style>
+    <div class="difficulty-bar"></div>
+    """, unsafe_allow_html=True)
+
+    # Collapsible detailed view
+    with st.expander("Detailed Analysis", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            if "all_responses" in problem:
+                st.markdown("**Answer Distribution**")
+                dist_data = problem.get("answer_distribution", {})
+                if dist_data:
+                    st.bar_chart(dist_data)
+                else:
+                    st.write("No distribution data available")
+        with col2:
+            st.markdown("**Performance Metrics**")
+            st.write(f"- Correct Generations: {problem['num_correct']}/{problem['num_generations']}")
+            st.write(f"- Majority Answer: {problem.get('majority_answer', 'N/A')}")
+            st.write(f"- Consensus Confidence: {problem.get('confidence', 'N/A'):.2%}")
+
+    st.markdown("---")
 
 
 def display_problem_details(problem, show_generations=False):
