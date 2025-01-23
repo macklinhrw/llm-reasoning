@@ -545,10 +545,16 @@ def main():
             col_sort1, col_sort2 = st.columns(2)
             with col_sort1:
                 sort_by = st.selectbox(
-                    "Sort by", ["Difficulty"]
-                )  # Only difficulty option
+                    "Sort by", 
+                    ["Difficulty"],
+                    key="sort_by_1"  # Unique key
+                )
             with col_sort2:
-                sort_order = st.selectbox("Order", ["Descending", "Ascending"])
+                sort_order = st.selectbox(
+                    "Order", 
+                    ["Descending", "Ascending"],
+                    key="sort_order_1"  # Unique key
+                )
 
             # Sort problems
             reverse = sort_order == "Descending"
@@ -624,10 +630,16 @@ def main():
             col_sort1, col_sort2 = st.columns(2)
             with col_sort1:
                 sort_by = st.selectbox(
-                    "Sort by", ["Difficulty"]
-                )  # Only difficulty option
+                    "Sort by", 
+                    ["Difficulty"],
+                    key="sort_by_2"  # Unique key
+                )
             with col_sort2:
-                sort_order = st.selectbox("Order", ["Descending", "Ascending"])
+                sort_order = st.selectbox(
+                    "Order", 
+                    ["Descending", "Ascending"],
+                    key="sort_order_2"  # Unique key
+                )
 
             # Add annotations to problems
             annotations = load_annotations(file_options[selected_file])
