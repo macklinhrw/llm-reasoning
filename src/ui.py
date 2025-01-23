@@ -541,6 +541,7 @@ def main():
 
             st.bar_chart(chart_df, use_container_width=True)
 
+
             # Sort problems
             reverse = sort_order == "Descending"
             key = "difficulty" if sort_by == "Difficulty" else "accuracy"
