@@ -597,7 +597,11 @@ def main():
             examples = sorted_problems
 
             # Create tabs AFTER initializing examples
-            tab_details, tab_annotate = st.tabs(["🔍 Problem Details", "🏷️ Annotation"])
+            tab_details, tab_annotate, tab_browser = st.tabs([
+                "🔍 Problem Details", 
+                "🏷️ Annotation", 
+                "📚 Annotations Browser"
+            ])
 
             with tab_annotate:
                 st.subheader("Problem Annotation")
@@ -670,7 +674,8 @@ def main():
                     save_annotations(file_options[selected_file], st.session_state.annotations)
                     st.success("Annotation saved!")
                 
-                # Improved annotations browser
+
+            with tab_browser:
                 st.subheader("Annotations Browser")
                 annotations = st.session_state.annotations
 
@@ -721,11 +726,11 @@ def main():
                             cols = st.columns([3, 1])
                             with cols[0]:
                                 st.caption("Problem Text")
-                                st.markdown(f"```\n{q[:200]}...\n```")  # Truncated problem text
+                                st.markdown(f"```\n{q[:200]}...\n```")
                                 
                                 st.caption("Notes")
                                 if ann["notes"]:
-                                    st.markdown(f"> *{ann['notes'][:100]}...*")  # Truncated note
+                                    st.markdown(f"> *{ann['notes'][:100]}...*")
                                 else:
                                     st.markdown("*No notes*")
                             
