@@ -283,42 +283,77 @@ def main():
             st.warning(f"No {category} files found.")
             return
 
-        file_options = all_files[category]  # Get just the Model Results files
-
-        # Let user select which file to load
+        # Parse and organize files
+        file_data = [parse_result_filename(f) for f in all_files[category].keys()]
+        
+        # Create sidebar filters
+        st.sidebar.subheader("Filter Results")
+        
+        # Model selection
+        unique_models = sorted({fd["model"] for fd in file_data if fd["model"]}, 
+                             key=lambda x: x.split()[-1])  # Sort by model size
+        selected_model = st.sidebar.selectbox(
+            "Model Family",
+            options=["All Models"] + unique_models,
+            index=0
+        )
+        
+        # Date selection
+        unique_dates = sorted({fd.get("date") for fd in file_data if fd.get("date")}, 
+                            reverse=True)
+        selected_date = st.sidebar.selectbox(
+            "Date",
+            options=["All Dates"] + unique_dates,
+            index=0
+        )
+        
+        # Search bar
+        search_term = st.sidebar.text_input("Search files", "").lower()
+        
+        # Filter files
+        filtered_files = [
+            f for f in file_data
+            if (selected_model == "All Models" or f["model"] == selected_model) and
+            (selected_date == "All Dates" or f.get("date") == selected_date) and
+            search_term in f["full_name"].lower()
+        ]
+        
+        # File selection with formatted names
         selected_file = st.sidebar.selectbox(
             "Choose results file",
-            options=list(file_options.keys()),
-            format_func=lambda x: x.replace("results/", "")
-            .replace(".json", "")
-            .replace(".jsonl", ""),
+            options=[f["full_name"] for f in filtered_files],
+            format_func=lambda x: next(f["display_name"] for f in filtered_files if f["full_name"] == x),
+            help="Files sorted by modification date (newest first)"
         )
+        
+        if not selected_file:
+            st.warning("No files match filters")
+            return
 
+        # Load results
         with st.spinner("Loading results..."):
-            examples = load_results_file(file_options[selected_file])  # Now passing actual file path
+            examples = load_results_file(all_files[category][selected_file])
             if not examples:
                 st.warning("No results found in selected file.")
                 return
 
-        # Display model metadata if available
-        if isinstance(examples[0], dict) and "model_name" in examples[0]:
-            st.sidebar.subheader("Model Info")
-            st.sidebar.write(f"Model: {examples[0]['model_name']}")
-            if "generation_method" in examples[0]:
-                st.sidebar.write(f"Method: {examples[0]['generation_method']}")
-            if "timestamp" in examples[0]:
-                st.sidebar.write(f"Run: {examples[0]['timestamp']}")
-
-        # Display metrics if available
-        if "accuracy" in examples[0]:
-            cols = st.columns(3)
-            with cols[0]:
-                st.metric("Total Problems", len(examples))
-            with cols[1]:
+        # Summary header
+        st.subheader("Results Summary")
+        
+        cols = st.columns(4)
+        with cols[0]:
+            st.metric("Total Problems", len(examples))
+        with cols[1]:
+            if "accuracy" in examples[0]:
                 st.metric("Accuracy", f"{examples[0]['accuracy']:.2%}")
-            with cols[2]:
-                if "temperature" in examples[0]:
-                    st.metric("Temperature", examples[0]['temperature'])
+        with cols[2]:
+            if "temperature" in examples[0]:
+                st.metric("Temperature", examples[0]['temperature'])
+        with cols[3]:
+            if "generation_method" in examples[0]:
+                st.metric("Method", examples[0]['generation_method'].title())
+        
+        st.markdown("---")  # Horizontal line
 
     total_examples = len(examples)
     st.sidebar.markdown(f"Total examples: {total_examples}")
@@ -356,7 +391,7 @@ def main():
     # Display current example
     if 0 <= st.session_state.current_idx < total_examples:
         example = examples[st.session_state.current_idx]
-
+        
         if data_source in ["Analysis Results", "Difficulty Analysis"]:
             show_generations = st.checkbox("Show all generations")
             display_problem_details(example, show_generations)
@@ -366,41 +401,57 @@ def main():
             st.subheader("Solution")
             st.code(example["answer"], language=None)
         elif data_source == "Model Results":
-            st.subheader("Problem")
-            st.code(example.get("question", example.get("input_question", "N/A")), 
-                    language=None, 
-                    wrap_lines=True)
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if "correct_answer" in example:
-                    st.metric("Correct Answer", example["correct_answer"])
-                elif "target" in example:
-                    st.metric("Target Answer", example["target"])
+            tab1, tab2, tab3 = st.tabs(["Problem & Response", "Analysis", "Raw Data"])
+            
+            with tab1:
+                col1, col2 = st.columns([2, 1])
                 
-                if "predicted_answer" in example:
-                    status = "✅" if example.get("is_correct", False) else "❌"
-                    st.metric(f"Predicted Answer {status}", example["predicted_answer"])
-
-            with col2:
-                if "confidence" in example:
-                    st.metric("Confidence", f"{example['confidence']:.2%}")
-                if "temperature" in example:
-                    st.metric("Temperature", example["temperature"])
-
-            if "response" in example:
-                with st.expander("Model Response"):
-                    st.code(example["response"], language="markdown", wrap_lines=True)
-
-            if "all_responses" in example:
-                with st.expander(f"All Responses ({len(example['all_responses'])})"):
-                    for i, resp in enumerate(example["all_responses"], 1):
-                        st.markdown(f"**Response {i}**")
-                        st.code(resp, language="markdown", wrap_lines=True)
-
-        # Display all metadata
-        with st.expander("Raw Data"):
-            st.json(example)
+                with col1:
+                    st.subheader("Problem Statement")
+                    st.markdown(f"```\n{example.get('question', example.get('input_question', 'N/A'))}\n```")
+                    
+                    if "all_responses" in example:
+                        with st.expander(f"View All Responses ({len(example['all_responses'])})", expanded=False):
+                            for i, resp in enumerate(example["all_responses"], 1):
+                                st.markdown(f"**Response {i}**")
+                                st.code(resp, language="markdown")
+                
+                with col2:
+                    st.subheader("Answers")
+                    answer_col1, answer_col2 = st.columns(2)
+                    
+                    with answer_col1:
+                        st.markdown("### Correct Answer")
+                        correct_answer = example.get("correct_answer", example.get("target", "N/A"))
+                        st.markdown(f"<h2 style='color: #2ecc71;'>{correct_answer}</h2>", 
+                                  unsafe_allow_html=True)
+                    
+                    with answer_col2:
+                        st.markdown("### Model Prediction")
+                        pred_answer = example.get("predicted_answer", "N/A")
+                        is_correct = example.get("is_correct", False)
+                        color = "#2ecc71" if is_correct else "#e74c3c"
+                        st.markdown(f"<h2 style='color: {color};'>{pred_answer}</h2>", 
+                                  unsafe_allow_html=True)
+                    
+                    if "confidence" in example:
+                        st.metric("Confidence Score", f"{example['confidence']:.2%}",
+                                help="Model's self-reported confidence in the answer")
+            
+            with tab2:
+                if "analysis" in example:
+                    st.subheader("Detailed Analysis")
+                    st.write(example["analysis"])
+                else:
+                    st.write("No detailed analysis available for this example")
+                
+                if "error_types" in example:
+                    st.subheader("Error Categories")
+                    for error in example["error_types"]:
+                        st.markdown(f"- {error}")
+            
+            with tab3:
+                st.json(example)
 
 
 if __name__ == "__main__":
