@@ -276,10 +276,14 @@ def main():
 
     else:  # Model Results
         # Get available result files
-        file_options = get_result_files()
-        if not file_options:
-            st.warning("No result files found.")
+        all_files = get_result_files()
+        category = "Model Results"
+        
+        if category not in all_files or not all_files[category]:
+            st.warning(f"No {category} files found.")
             return
+
+        file_options = all_files[category]  # Get just the Model Results files
 
         # Let user select which file to load
         selected_file = st.sidebar.selectbox(
@@ -291,7 +295,7 @@ def main():
         )
 
         with st.spinner("Loading results..."):
-            examples = load_results_file(file_options[selected_file])
+            examples = load_results_file(file_options[selected_file])  # Now passing actual file path
             if not examples:
                 st.warning("No results found in selected file.")
                 return
