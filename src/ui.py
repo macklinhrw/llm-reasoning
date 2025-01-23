@@ -541,7 +541,10 @@ def main():
 
             st.bar_chart(chart_df, use_container_width=True)
 
-            # Add annotation tab
+            # Initialize examples BEFORE creating tabs
+            examples = sorted_problems
+
+            # Create tabs AFTER initializing examples
             tab_details, tab_annotate = st.tabs(["🔍 Problem Details", "🏷️ Annotation"])
 
             with tab_annotate:
