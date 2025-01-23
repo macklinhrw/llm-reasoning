@@ -56,6 +56,31 @@ def load_results_file(file_path):
                 for line in f:
                     if line.strip():
                         results.append(json.loads(line))
+
+
+def parse_result_filename(filename):
+    """Extract metadata from result filenames."""
+    parts = filename.replace(".json", "").replace(".jsonl", "").split("-")
+    metadata = {
+        "full_name": filename,
+        "display_name": filename.replace("evaluation_results-", "").replace(".json", "")
+    }
+    
+    # Try to extract model name
+    model_parts = []
+    for part in parts[2:]:  # Skip initial "evaluation_results"
+        if part.isdigit() and len(part) == 4:  # Year starts the date
+            break
+        model_parts.append(part)
+    metadata["model"] = " ".join(model_parts).replace("_", " ").title()
+    
+    # Try to extract date
+    date_parts = [p for p in parts if len(p) == 8 and p.isdigit()]
+    if date_parts:
+        date_str = date_parts[0]
+        metadata["date"] = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+    
+    return metadata
         else:
             with open(file_path, "r") as f:
                 data = json.load(f)
