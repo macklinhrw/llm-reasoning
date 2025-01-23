@@ -541,7 +541,14 @@ def main():
 
             st.bar_chart(chart_df, use_container_width=True)
 
-            # Initialize examples BEFORE creating tabs
+            # Sort problems
+            reverse = sort_order == "Descending"
+            key = "difficulty" if sort_by == "Difficulty" else "accuracy"
+            sorted_problems = sorted(
+                data["problems"], key=lambda x: x[key], reverse=reverse
+            )
+
+            # Initialize examples with sorted problems
             examples = sorted_problems
 
             # Create tabs AFTER initializing examples
@@ -612,13 +619,6 @@ def main():
                 )  # Only difficulty option
             with col_sort2:
                 sort_order = st.selectbox("Order", ["Descending", "Ascending"])
-
-            # Sort problems
-            reverse = sort_order == "Descending"
-            key = "difficulty" if sort_by == "Difficulty" else "accuracy"
-            sorted_problems = sorted(
-                data["problems"], key=lambda x: x[key], reverse=reverse
-            )
 
             # Add annotations to problems
             annotations = load_annotations(file_options[selected_file])
