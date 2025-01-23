@@ -625,7 +625,7 @@ def main():
                         "Difficulty Types",
                         difficulty_types,
                         default=annotation["difficulty_types"],
-                        key=f"types_{problem_id}"
+                        key=f"types_{problem_id}"  # Already unique per problem
                     )
 
                 with col2:
@@ -670,16 +670,74 @@ def main():
                     save_annotations(file_options[selected_file], st.session_state.annotations)
                     st.success("Annotation saved!")
                 
-                # Show existing annotations
-                st.markdown("---")
-                st.subheader("All Annotations")
-                if not st.session_state.annotations:
+                # Improved annotations browser
+                st.subheader("Annotations Browser")
+                annotations = st.session_state.annotations
+
+                if not annotations:
                     st.write("No annotations saved yet")
                 else:
-                    for idx, (q, ann) in enumerate(st.session_state.annotations.items()):
-                        with st.expander(f"Annotation {idx+1}: {q[:50]}..."):
-                            st.write(f"**Types:** {', '.join(ann['difficulty_types'])}")
-                            st.write(f"**Notes:** {ann['notes']}")
+                    # Add filtering controls
+                    st.markdown("---")
+                    col_filter1, col_filter2 = st.columns(2)
+                    with col_filter1:
+                        search_query = st.text_input("Search annotations", "")
+                    with col_filter2:
+                        selected_type_filter = st.multiselect(
+                            "Filter by type", 
+                            difficulty_types,
+                            default=[]
+                        )
+                    
+                    # Group annotations by type
+                    filtered_annotations = []
+                    for q, ann in annotations.items():
+                        matches_search = search_query.lower() in q.lower() or search_query.lower() in ann["notes"].lower()
+                        matches_type = not selected_type_filter or any(t in selected_type_filter for t in ann["difficulty_types"])
+                        if matches_search and matches_type:
+                            filtered_annotations.append((q, ann))
+                    
+                    # Add pagination
+                    items_per_page = 10
+                    total_pages = (len(filtered_annotations) + items_per_page - 1) // items_per_page
+                    current_page = st.number_input("Page", 1, total_pages, 1) - 1
+                    
+                    start_idx = current_page * items_per_page
+                    end_idx = min(start_idx + items_per_page, len(filtered_annotations))
+                    
+                    # Display annotation cards in columns
+                    for q, ann in filtered_annotations[start_idx:end_idx]:
+                        with st.expander(f"📌 {q[:50]}...", expanded=False):
+                            cols = st.columns([3, 1])
+                            with cols[0]:
+                                st.caption("Problem Text")
+                                st.markdown(f"```\n{q[:200]}...\n```")  # Truncated problem text
+                                
+                                st.caption("Notes")
+                                if ann["notes"]:
+                                    st.markdown(f"> *{ann['notes'][:100]}...*")  # Truncated note
+                                else:
+                                    st.markdown("*No notes*")
+                            
+                            with cols[1]:
+                                st.caption("Difficulty Types")
+                                if ann["difficulty_types"]:
+                                    for t in ann["difficulty_types"]:
+                                        st.markdown(f"- `{t}`")
+                                else:
+                                    st.markdown("*No types specified*")
+                                
+                                if st.button("Go to Annotation", key=f"goto_{q[:20]}"):
+                                    problem_ids = [p["question"] for p in examples]
+                                    if q in problem_ids:
+                                        st.session_state.current_idx = problem_ids.index(q)
+                                        st.rerun()
+                                    else:
+                                        st.warning("This annotation isn't in the current view")
+                    
+                    # Pagination controls
+                    if total_pages > 1:
+                        st.markdown(f"**Page {current_page + 1} of {total_pages}**")
 
             # Problem list
             st.markdown("---")
