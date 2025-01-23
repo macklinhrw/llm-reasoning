@@ -385,14 +385,21 @@ def main():
 
         # Load results
         with st.spinner("Loading results..."):
-            examples = load_results_file(all_files[category][selected_file])
+            loaded_data = load_results_file(all_files[category][selected_file])
+            examples = loaded_data  # For files that are just lists
+            params = {}
+
+            # If the data has a parameters field (structured format)
+            if isinstance(loaded_data, dict) and "parameters" in loaded_data:
+                params = loaded_data["parameters"]
+                examples = loaded_data.get("results", [])
+
             if not examples:
                 st.warning("No results found in selected file.")
                 return
 
         # Summary header
         st.subheader("Results Summary")
-        params = data.get("parameters", {})
 
         cols = st.columns(4)
         with cols[0]:
