@@ -650,6 +650,7 @@ def main():
                         
                         if st.button("❌ Cancel"):
                             st.session_state.edit_types = False
+                            st.rerun()  # Force immediate UI refresh
                 
                 # Notes field
                 notes = st.text_area(
