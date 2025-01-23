@@ -541,6 +541,14 @@ def main():
 
             st.bar_chart(chart_df, use_container_width=True)
 
+            # Sorting controls (removed accuracy option)
+            col_sort1, col_sort2 = st.columns(2)
+            with col_sort1:
+                sort_by = st.selectbox(
+                    "Sort by", ["Difficulty"]
+                )  # Only difficulty option
+            with col_sort2:
+                sort_order = st.selectbox("Order", ["Descending", "Ascending"])
 
             # Sort problems
             reverse = sort_order == "Descending"
