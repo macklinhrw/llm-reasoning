@@ -3,6 +3,7 @@ from datasets import load_dataset
 import json
 import glob
 import os
+from src.utils import extract_answer
 
 
 @st.cache_resource
@@ -144,9 +145,52 @@ def display_problem_details(problem, show_generations=False):
     # Display generations if available and requested
     if show_generations and "all_responses" in problem:
         st.subheader("All Generations")
-        for i, response in enumerate(problem["all_responses"], 1):
-            with st.expander(f"Generation {i}"):
-                st.code(response, wrap_lines=True)
+        
+        # Add filtering controls
+        col1, col2 = st.columns(2)
+        with col1:
+            filter_type = st.selectbox("Filter generations", 
+                                     ["All", "Correct", "Incorrect"],
+                                     key=f"filter_{problem['question']}")
+        with col2:
+            show_solution = st.checkbox("Show solution alongside", 
+                                      key=f"solution_toggle_{problem['question']}")
+
+        # Precompute correctness for performance
+        correct_answer = problem["correct_answer"]
+        responses = []
+        for response in problem["all_responses"]:
+            extracted_answer = extract_answer(response)
+            is_correct = abs(extracted_answer - correct_answer) < 1e-6 if extracted_answer else False
+            responses.append((response, is_correct))
+
+        # Apply filter
+        if filter_type == "Correct":
+            filtered = [r for r in responses if r[1]]
+        elif filter_type == "Incorrect":
+            filtered = [r for r in responses if not r[1]]
+        else:
+            filtered = responses
+
+        # Display generations with solution comparison
+        for idx, (response, is_correct) in enumerate(filtered, 1):
+            status = "✅" if is_correct else "❌"
+            with st.expander(f"Generation {idx} {status}", expanded=False):
+                if show_solution and "solution" in problem:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("**Model Response**")
+                        st.code(response, language='markdown', wrap_lines=True)
+                    with col2:
+                        st.markdown("**Reference Solution**")
+                        st.code(problem["solution"], language='text', wrap_lines=True)
+                else:
+                    st.code(response, language='markdown', wrap_lines=True)
+
+        # Show quick stats
+        total_correct = sum(1 for r in responses if r[1])
+        st.caption(f"Showing {len(filtered)}/{len(responses)} generations "
+                 f"({total_correct} correct, {len(responses)-total_correct} incorrect)")
 
     # Display prompt if available
     if "prompt" in problem and problem["prompt"]:
