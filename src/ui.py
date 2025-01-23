@@ -485,6 +485,8 @@ def main():
     st.title("Dataset Viewer")
 
     # Initialize session state
+    if "pending_deletion" not in st.session_state:
+        st.session_state.pending_deletion = None
     if "current_idx" not in st.session_state:
         st.session_state.current_idx = 0
         st.session_state.input_idx = 0
@@ -677,16 +679,23 @@ def main():
                 # Add delete button for existing annotations
                 if problem_id in st.session_state.annotations:
                     st.markdown("---")
-                    if st.button("🗑️ Delete Annotation", type="primary"):
-                        confirm = st.warning("Are you sure you want to delete this annotation?")
-                        if st.button("Confirm Delete", key=f"confirm_del_{problem_id}"):
-                            del st.session_state.annotations[problem_id]
+                    if st.button("🗑️ Delete Annotation", type="primary", key=f"delete_{problem_id}"):
+                        st.session_state.pending_deletion = problem_id
+
+                # Handle deletion confirmation
+                if "pending_deletion" in st.session_state and st.session_state.pending_deletion == problem_id:
+                    st.warning("Confirm deletion?")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("✅ Confirm Delete"):
+                            del st.session_state.annotations[st.session_state.pending_deletion]
                             save_annotations(file_options[selected_file], st.session_state.annotations)
-                            st.success("Annotation deleted!")
-                            st.session_state.current_idx = min(
-                                st.session_state.current_idx, 
-                                len(examples) - 2
-                            )  # Adjust index if needed
+                            del st.session_state.pending_deletion
+                            st.session_state.current_idx = max(0, st.session_state.current_idx - 1)
+                            st.rerun()
+                    with col2:
+                        if st.button("❌ Cancel"):
+                            del st.session_state.pending_deletion
                             st.rerun()
                 
 
@@ -757,14 +766,25 @@ def main():
                                 else:
                                     st.markdown("*No types specified*")
                                 
-                                # Add delete button with confirmation
-                                if st.button("🗑️ Delete", key=f"delete_{hash(q)}"):  # Using hash for unique key
-                                    confirm = st.warning("Are you sure you want to delete this annotation?")
-                                    if st.button("Confirm Delete", key=f"confirm_delete_{hash(q)}"):
-                                        del st.session_state.annotations[q]
-                                        save_annotations(file_options[selected_file], st.session_state.annotations)
-                                        st.success("Annotation deleted!")
-                                        st.rerun()
+                                # Add delete button
+                                if st.button("🗑️ Delete", key=f"delete_{q}"):
+                                    st.session_state.pending_deletion = q
+
+                                # Handle deletion confirmation
+                                if "pending_deletion" in st.session_state and st.session_state.pending_deletion == q:
+                                    st.warning(f"Confirm deletion for: {q[:50]}...?")
+                                    
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        if st.button("✅ Confirm Delete"):
+                                            del st.session_state.annotations[q]
+                                            save_annotations(file_options[selected_file], st.session_state.annotations)
+                                            del st.session_state.pending_deletion
+                                            st.rerun()
+                                    with col2:
+                                        if st.button("❌ Cancel"):
+                                            del st.session_state.pending_deletion
+                                            st.rerun()
                                 
                                 if st.button("Go to Annotation", key=f"goto_{q[:20]}"):
                                     problem_ids = [p["question"] for p in examples]
