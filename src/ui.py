@@ -3,7 +3,7 @@ from datasets import load_dataset
 import json
 import glob
 import os
-from src.utils import extract_answer
+from .utils import extract_answer
 
 
 @st.cache_resource
