@@ -26,18 +26,20 @@ def get_result_files(directory="results"):
     file_patterns = {
         "Model Results": [
             os.path.join(directory, "*.json"),
-            os.path.join(directory, "*.jsonl")
+            os.path.join(directory, "*.jsonl"),
         ],
         "Incorrect Results": os.path.join(directory, "incorrect", "*.jsonl"),
         "Analysis Results": os.path.join(directory, "analysis", "*.json"),
-        "Difficulty Analysis": os.path.join(directory, "analysis", "difficulty", "*.json"),
+        "Difficulty Analysis": os.path.join(
+            directory, "analysis", "difficulty", "*.json"
+        ),
     }
 
     files = {}
     for category, patterns in file_patterns.items():
         if isinstance(patterns, str):
             patterns = [patterns]
-        
+
         category_files = []
         for pattern in patterns:
             category_files.extend(glob.glob(pattern))
@@ -63,7 +65,7 @@ def load_results_file(file_path):
         else:
             with open(file_path, "r") as f:
                 data = json.load(f)
-                
+
                 # Handle different JSON structures
                 if isinstance(data, list):
                     results = data
@@ -84,14 +86,18 @@ def parse_result_filename(filename):
     """Extract metadata from result filenames."""
     metadata = {
         "full_name": filename,
-        "display_name": filename.replace("evaluation_results-", "").replace(".json", ""),
-        "model": "Unknown Model"  # Add default value
+        "display_name": filename.replace("evaluation_results-", "").replace(
+            ".json", ""
+        ),
+        "model": "Unknown Model",  # Add default value
     }
-    
+
     # Improved regex pattern with fallbacks
     try:
         # First try to extract model name from filename
-        model_match = re.search(r"(?:evaluation_results-)?([A-Za-z0-9_.-]+?)(?:-\d{4}|$)", filename)
+        model_match = re.search(
+            r"(?:evaluation_results-)?([A-Za-z0-9_.-]+?)(?:-\d{4}|$)", filename
+        )
         if model_match:
             model_raw = model_match.group(1)
             # Clean up model name
@@ -104,11 +110,11 @@ def parse_result_filename(filename):
                 else:
                     formatted_parts.append(part.capitalize())
             metadata["model"] = " ".join(formatted_parts)
-            
+
         # Special case for Qwen models
         if "qwen" in filename.lower():
             metadata["model"] = filename.split("-")[0].upper()
-            
+
     except Exception as e:
         st.error(f"Error parsing filename {filename}: {str(e)}")
 
@@ -116,7 +122,9 @@ def parse_result_filename(filename):
     try:
         date_match = re.search(r"(\d{4}-\d{2}-\d{2})", filename)
         if date_match:
-            metadata["date"] = datetime.strptime(date_match.group(1), "%Y-%m-%d").strftime("%b %d, %Y")
+            metadata["date"] = datetime.strptime(
+                date_match.group(1), "%Y-%m-%d"
+            ).strftime("%b %d, %Y")
         else:
             metadata["date"] = "Unknown Date"
     except Exception as e:
@@ -130,48 +138,75 @@ def display_analysis_results(data):
     """Display analysis results in a structured way with improved UI."""
     # Create tabs for different sections
     tab_overview, tab_details = st.tabs(["📊 Overview", "📝 Problem Details"])
-    
+
     with tab_overview:
         st.subheader("Model Overview")
-        cols = st.columns([1,2])
+        cols = st.columns([1, 2])
         with cols[0]:
-            st.metric("Model Name", data.get('model_name', 'N/A'))
-            st.metric("Generation Method", data.get('generation_method', 'N/A').title())
+            st.metric("Model Name", data.get("model_name", "N/A"))
+            st.metric("Generation Method", data.get("generation_method", "N/A").title())
         with cols[1]:
-            st.metric("Evaluation Date", data.get('timestamp', 'N/A'))
-            st.metric("Total Problems", data.get('statistics', {}).get('total_problems', 'N/A'))
+            st.metric("Evaluation Date", data.get("timestamp", "N/A"))
+            st.metric(
+                "Total Problems",
+                data.get("statistics", {}).get("total_problems", "N/A"),
+            )
 
         st.markdown("---")
         st.subheader("Key Metrics")
-        
+
         # Create metric columns with icons
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("🏅 Generation Accuracy", 
-                    f"{data['statistics']['generation_accuracy']:.2%}" if 'statistics' in data else 'N/A',
-                    help="Accuracy of individual generations")
+            st.metric(
+                "🏅 Generation Accuracy",
+                (
+                    f"{data['statistics']['generation_accuracy']:.2%}"
+                    if "statistics" in data
+                    else "N/A"
+                ),
+                help="Accuracy of individual generations",
+            )
         with col2:
-            st.metric("👥 Majority Accuracy", 
-                    f"{data['statistics']['majority_accuracy']:.2%}" if 'statistics' in data else 'N/A',
-                    help="Accuracy when using majority voting")
+            st.metric(
+                "👥 Majority Accuracy",
+                (
+                    f"{data['statistics']['majority_accuracy']:.2%}"
+                    if "statistics" in data
+                    else "N/A"
+                ),
+                help="Accuracy when using majority voting",
+            )
         with col3:
-            st.metric("📚 Total Generations", 
-                    data['statistics'].get('total_generations', 'N/A') if 'statistics' in data else 'N/A')
+            st.metric(
+                "📚 Total Generations",
+                (
+                    data["statistics"].get("total_generations", "N/A")
+                    if "statistics" in data
+                    else "N/A"
+                ),
+            )
         with col4:
-            st.metric("🎚️ Temperature", 
-                    data['parameters'].get('temperature', 'N/A') if 'parameters' in data else 'N/A')
+            st.metric(
+                "🎚️ Temperature",
+                (
+                    data["parameters"].get("temperature", "N/A")
+                    if "parameters" in data
+                    else "N/A"
+                ),
+            )
 
         # Add visualization section
-        if 'statistics' in data:
+        if "statistics" in data:
             st.markdown("---")
             st.subheader("Accuracy Distribution")
-            
+
             col_viz1, col_viz2 = st.columns(2)
             with col_viz1:
                 st.markdown("**By Problem Difficulty**")
                 # Example visualization - would need actual difficulty data
                 st.bar_chart({"Low": 0.85, "Medium": 0.72, "High": 0.55})
-            
+
             with col_viz2:
                 st.markdown("**Temporal Accuracy Trend**")
                 # Example time-based trend
@@ -180,7 +215,7 @@ def display_analysis_results(data):
     with tab_details:
         st.subheader("Problem-Level Analysis")
         st.caption("Browse individual problems with detailed performance metrics")
-        
+
         # Add filtering controls
         col_filter1, col_filter2 = st.columns(2)
         with col_filter1:
@@ -189,39 +224,43 @@ def display_analysis_results(data):
             show_incorrect = st.checkbox("Show only incorrect problems", value=False)
 
         # Problem cards
-        for idx, problem in enumerate(data.get('problem_details', [])):
+        for idx, problem in enumerate(data.get("problem_details", [])):
             # Apply filters
-            if problem['accuracy'] < min_accuracy:
+            if problem["accuracy"] < min_accuracy:
                 continue
-            if show_incorrect and problem['accuracy'] == 1.0:
+            if show_incorrect and problem["accuracy"] == 1.0:
                 continue
-            
+
             # Create expandable problem card
-            with st.expander(f"Problem {idx+1} | Accuracy: {problem['accuracy']:.2%}", expanded=False):
+            with st.expander(
+                f"Problem {idx+1} | Accuracy: {problem['accuracy']:.2%}", expanded=False
+            ):
                 display_problem_card(problem)
+
 
 def display_problem_card(problem):
     """Display a problem in a condensed card format with visual indicators."""
-    cols = st.columns([3,1,1,1])
-    
+    cols = st.columns([3, 1, 1, 1])
+
     # Calculate derived difficulty if not present
-    derived_difficulty = 1 - problem.get('accuracy', 0)
-    
+    derived_difficulty = 1 - problem.get("accuracy", 0)
+
     with cols[0]:
         st.markdown(f"**Question**  \n{problem['question'][:200]}...")
-    
+
     with cols[1]:
-        st.metric("Correct", problem['correct_answer'])
+        st.metric("Correct", problem["correct_answer"])
     with cols[2]:
-        pred = problem.get('predicted_answer', 'N/A')
-        st.metric("Predicted", pred, delta="✅" if problem.get('is_correct') else "❌")
+        pred = problem.get("predicted_answer", "N/A")
+        st.metric("Predicted", pred, delta="✅" if problem.get("is_correct") else "❌")
     with cols[3]:
         # Show accuracy instead of difficulty when they're directly related
         st.metric("Accuracy", f"{problem['accuracy']:.2%}")
 
     # Visual indicator now shows accuracy
-    accuracy = problem['accuracy']
-    st.markdown(f"""
+    accuracy = problem["accuracy"]
+    st.markdown(
+        f"""
     <style>
         .accuracy-bar {{
             height: 8px;
@@ -231,7 +270,9 @@ def display_problem_card(problem):
         }}
     </style>
     <div class="accuracy-bar"></div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Update detailed view
     with st.expander("Detailed Analysis", expanded=False):
@@ -243,8 +284,10 @@ def display_problem_card(problem):
                     st.bar_chart(problem["answer_distribution"])
         with col2:
             st.markdown("**Performance Metrics**")
-            st.write(f"- Correct Generations: {problem['num_correct']}/{problem['num_generations']}")
-            if 'difficulty' in problem:
+            st.write(
+                f"- Correct Generations: {problem['num_correct']}/{problem['num_generations']}"
+            )
+            if "difficulty" in problem:
                 st.write(f"- Difficulty: {problem['difficulty']:.2%}")
             else:
                 st.write(f"- Difficulty (1 - Accuracy): {derived_difficulty:.2%}")
@@ -255,15 +298,15 @@ def display_problem_card(problem):
 def display_problem_details(problem, show_generations=False):
     """Display problem details in a structured way."""
     st.subheader("Problem")
-    st.code(problem["question"], language='text', wrap_lines=True)
-    
+    st.code(problem["question"], language="text", wrap_lines=True)
+
     if "solution" in problem:
         st.subheader("Solution")
-        st.code(problem["solution"], language='text', wrap_lines=True)
+        st.code(problem["solution"], language="text", wrap_lines=True)
 
     # Calculate derived difficulty if needed
     derived_difficulty = 1 - problem["accuracy"]
-    
+
     # Update metrics display
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -272,11 +315,14 @@ def display_problem_details(problem, show_generations=False):
     with col2:
         if "majority_answer" in problem:
             st.metric("Majority Answer", problem["majority_answer"])
-        if 'difficulty' in problem:
-            st.metric("Independent Difficulty", f"{problem['difficulty']:.2%}")
+        if "difficulty" in problem:
+            st.metric("Difficulty", f"{problem['difficulty']:.2%}")
         else:
-            st.metric("Derived Difficulty", f"{derived_difficulty:.2%}",
-                    help="Calculated as 1 - Accuracy")
+            st.metric(
+                "Derived Difficulty",
+                f"{derived_difficulty:.2%}",
+                help="Calculated as 1 - Accuracy",
+            )
     with col3:
         st.metric(
             "Correct Generations",
@@ -292,29 +338,38 @@ def display_problem_details(problem, show_generations=False):
     # Display generations if available and requested
     if show_generations and "all_responses" in problem:
         st.subheader("All Generations")
-        
+
         # Precompute correctness for performance
         correct_answer = problem["correct_answer"]
         responses = []
         for response in problem["all_responses"]:
             extracted_answer = extract_answer(response)
-            is_correct = abs(extracted_answer - correct_answer) < 1e-6 if extracted_answer else False
+            is_correct = (
+                abs(extracted_answer - correct_answer) < 1e-6
+                if extracted_answer
+                else False
+            )
             responses.append((response, is_correct))
 
         # Show stats at top
         total_correct = sum(1 for r in responses if r[1])
-        st.caption(f"Showing {len(responses)} generations "
-                 f"({total_correct} correct, {len(responses)-total_correct} incorrect)")
-        
+        st.caption(
+            f"Showing {len(responses)} generations "
+            f"({total_correct} correct, {len(responses)-total_correct} incorrect)"
+        )
+
         # Add filtering controls
         col1, col2 = st.columns(2)
         with col1:
-            filter_type = st.selectbox("Filter generations", 
-                                     ["All", "Correct", "Incorrect"],
-                                     key=f"filter_{problem['question']}")
+            filter_type = st.selectbox(
+                "Filter generations",
+                ["All", "Correct", "Incorrect"],
+                key=f"filter_{problem['question']}",
+            )
         with col2:
-            show_solution = st.checkbox("Show solution alongside", 
-                                      key=f"solution_toggle_{problem['question']}")
+            show_solution = st.checkbox(
+                "Show solution alongside", key=f"solution_toggle_{problem['question']}"
+            )
 
         # Apply filter
         if filter_type == "Correct":
@@ -332,12 +387,12 @@ def display_problem_details(problem, show_generations=False):
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("**Model Response**")
-                        st.code(response, language='markdown', wrap_lines=True)
+                        st.code(response, language="markdown", wrap_lines=True)
                     with col2:
                         st.markdown("**Reference Solution**")
-                        st.code(problem["solution"], language='text', wrap_lines=True)
+                        st.code(problem["solution"], language="text", wrap_lines=True)
                 else:
-                    st.code(response, language='markdown', wrap_lines=True)
+                    st.code(response, language="markdown", wrap_lines=True)
 
     # Display prompt if available
     if "prompt" in problem and problem["prompt"]:
@@ -397,11 +452,11 @@ def main():
 
             # New layout
             st.subheader("🧩 Difficulty Analysis")
-            
+
             # Summary banner
             cols = st.columns(4)
             with cols[0]:
-                st.metric("Filter Type", data['filter_type'].title())
+                st.metric("Filter Type", data["filter_type"].title())
             with cols[1]:
                 value = (
                     f"Top {data['filter_value']}"
@@ -412,21 +467,27 @@ def main():
             with cols[2]:
                 st.metric("Problems Found", data["num_problems"])
             with cols[3]:
-                avg_difficulty = sum(p["difficulty"] for p in data["problems"])/len(data["problems"])
+                avg_difficulty = sum(p["difficulty"] for p in data["problems"]) / len(
+                    data["problems"]
+                )
                 st.metric("Avg Difficulty", f"{avg_difficulty:.2%}")
 
             # Visualization row
             st.markdown("---")
             st.markdown("**Difficulty Distribution**")
-            difficulties = [1 - p["accuracy"] for p in data["problems"]]  # Calculate difficulty
+            difficulties = [
+                1 - p["accuracy"] for p in data["problems"]
+            ]  # Calculate difficulty
             bin_edges = np.linspace(0, 1, 21)
             hist, bin_edges = np.histogram(difficulties, bins=bin_edges)
-            bin_labels = [f"{bin_edges[i]:.2f}-{bin_edges[i+1]:.2f}" for i in range(len(bin_edges)-1)]
+            bin_labels = [
+                f"{bin_edges[i]:.2f}-{bin_edges[i+1]:.2f}"
+                for i in range(len(bin_edges) - 1)
+            ]
 
-            chart_df = pd.DataFrame({
-                'Difficulty Range': bin_labels,
-                'Number of Problems': hist
-            }).set_index('Difficulty Range')
+            chart_df = pd.DataFrame(
+                {"Difficulty Range": bin_labels, "Number of Problems": hist}
+            ).set_index("Difficulty Range")
 
             st.bar_chart(chart_df, use_container_width=True)
 
@@ -437,7 +498,9 @@ def main():
             # Sorting controls (removed accuracy option)
             col_sort1, col_sort2 = st.columns(2)
             with col_sort1:
-                sort_by = st.selectbox("Sort by", ["Difficulty"])  # Only difficulty option
+                sort_by = st.selectbox(
+                    "Sort by", ["Difficulty"]
+                )  # Only difficulty option
             with col_sort2:
                 sort_order = st.selectbox("Order", ["Descending", "Ascending"])
 
@@ -445,9 +508,7 @@ def main():
             reverse = sort_order == "Descending"
             key = "difficulty" if sort_by == "Difficulty" else "accuracy"
             sorted_problems = sorted(
-                data["problems"], 
-                key=lambda x: x[key], 
-                reverse=reverse
+                data["problems"], key=lambda x: x[key], reverse=reverse
             )
 
             # Display sorted problems
@@ -457,39 +518,44 @@ def main():
         # Get available result files
         all_files = get_result_files()
         category = "Model Results"
-        
+
         if category not in all_files or not all_files[category]:
             st.warning(f"No {category} files found.")
             return
 
         # Parse and organize files
         file_data = [parse_result_filename(f) for f in all_files[category].keys()]
-        
+
         # Create sidebar filters
         st.sidebar.subheader("Filter Results")
-        
+
         with st.sidebar:
             with st.expander("🔍 Search Filters", expanded=True):
-                search_term = st.text_input("Search files", "", 
-                                          placeholder="Model name or date...",
-                                          help="Search by model family, date, or method")
-                
+                search_term = st.text_input(
+                    "Search files",
+                    "",
+                    placeholder="Model name or date...",
+                    help="Search by model family, date, or method",
+                )
+
                 col1, col2 = st.columns(2)
                 with col1:
                     unique_models = sorted(
                         {fd.get("model", "Unknown Model") for fd in file_data},
                         key=lambda x: (
                             not x.startswith("Llama"),  # Llama first
-                            not x.startswith("Qwen"),   # Then Qwen
-                            x.split()[-1]               # Sort by model size
-                        )
+                            not x.startswith("Qwen"),  # Then Qwen
+                            x.split()[-1],  # Sort by model size
+                        ),
                     )
                     selected_model = st.selectbox(
                         "Model Family", ["All Models"] + unique_models, index=0
                     )
                 with col2:
-                    unique_dates = sorted({fd.get("date") for fd in file_data if fd.get("date")}, 
-                                        reverse=True)
+                    unique_dates = sorted(
+                        {fd.get("date") for fd in file_data if fd.get("date")},
+                        reverse=True,
+                    )
                     selected_date = st.selectbox(
                         "Date", ["All Dates"] + unique_dates, index=0
                     )
@@ -497,19 +563,22 @@ def main():
             st.markdown("---")
             st.markdown("**Selected File**")
             filtered_files = [
-                f for f in file_data
-                if (selected_model == "All Models" or f["model"] == selected_model) and
-                (selected_date == "All Dates" or f.get("date") == selected_date) and
-                search_term in f["full_name"].lower()
+                f
+                for f in file_data
+                if (selected_model == "All Models" or f["model"] == selected_model)
+                and (selected_date == "All Dates" or f.get("date") == selected_date)
+                and search_term in f["full_name"].lower()
             ]
             selected_file = st.selectbox(
                 "Choose results file",
                 options=[f["full_name"] for f in filtered_files],
-                format_func=lambda x: next(f["display_name"] for f in filtered_files if f["full_name"] == x),
+                format_func=lambda x: next(
+                    f["display_name"] for f in filtered_files if f["full_name"] == x
+                ),
                 help="Files sorted by modification date (newest first)",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
             )
-        
+
         if not selected_file:
             st.warning("No files match filters")
             return
@@ -544,7 +613,7 @@ def main():
         with cols[3]:
             method = params.get("generation_method", "N/A").replace("_", " ").title()
             st.metric("Method", method)
-        
+
         st.markdown("---")  # Horizontal line
 
     total_examples = len(examples)
@@ -583,7 +652,7 @@ def main():
     # Display current example
     if 0 <= st.session_state.current_idx < total_examples:
         example = examples[st.session_state.current_idx]
-        
+
         if data_source in ["Analysis Results", "Difficulty Analysis"]:
             show_generations = st.checkbox("Show all generations")
             display_problem_details(example, show_generations)
@@ -594,79 +663,109 @@ def main():
             st.code(example["answer"], language=None)
         elif data_source == "Model Results":
             tab1, tab2, tab3 = st.tabs(["Problem & Response", "Analysis", "Raw Data"])
-            
+
             with tab1:
                 col1, col2 = st.columns([2, 1])
-                
+
                 with col1:
                     st.subheader("Problem Statement")
-                    st.markdown(f"```\n{example.get('question', example.get('input_question', 'N/A'))}\n```")
-                    
+                    st.markdown(
+                        f"```\n{example.get('question', example.get('input_question', 'N/A'))}\n```"
+                    )
+
                     # Display primary response
                     if "response" in example:
                         st.subheader("Model Response")
-                        st.code(example["response"], language="markdown", wrap_lines=True)
+                        st.code(
+                            example["response"], language="markdown", wrap_lines=True
+                        )
 
                     # Display all responses if available
                     if "all_responses" in example:
-                        with st.expander(f"View All {len(example['all_responses'])} Responses", expanded=False):
+                        with st.expander(
+                            f"View All {len(example['all_responses'])} Responses",
+                            expanded=False,
+                        ):
                             for i, resp in enumerate(example["all_responses"], 1):
                                 st.markdown(f"**Response {i}**")
                                 st.code(resp, language="markdown", wrap_lines=True)
-                
+
                 with col2:
                     st.subheader("Answers")
                     answer_col1, answer_col2 = st.columns(2)
-                    
+
                     with answer_col1:
-                        correct_answer = example.get("correct") or example.get("correct_answer") or example.get("target")
+                        correct_answer = (
+                            example.get("correct")
+                            or example.get("correct_answer")
+                            or example.get("target")
+                        )
                         st.markdown(f"### Correct Answer")
                         if correct_answer is not None:
-                            st.markdown(f"<h2 style='color: #2ecc71;'>{correct_answer}</h2>", unsafe_allow_html=True)
+                            st.markdown(
+                                f"<h2 style='color: #2ecc71;'>{correct_answer}</h2>",
+                                unsafe_allow_html=True,
+                            )
                         else:
                             st.warning("No correct answer found in data")
 
                     with answer_col2:
-                        pred_answer = example.get("predicted_answer") or example.get("predicted") or "N/A"
+                        pred_answer = (
+                            example.get("predicted_answer")
+                            or example.get("predicted")
+                            or "N/A"
+                        )
                         is_correct = example.get("is_correct", False)
                         color = "#2ecc71" if is_correct else "#e74c3c"
                         st.markdown(f"### Model Prediction")
-                        st.markdown(f"<h2 style='color: {color};'>{pred_answer}</h2>", unsafe_allow_html=True)
-                    
+                        st.markdown(
+                            f"<h2 style='color: {color};'>{pred_answer}</h2>",
+                            unsafe_allow_html=True,
+                        )
+
                     if "confidence" in example:
-                        st.metric("Confidence Score", f"{example['confidence']:.2%}",
-                                help="Model's self-reported confidence in the answer")
-            
+                        st.metric(
+                            "Confidence Score",
+                            f"{example['confidence']:.2%}",
+                            help="Model's self-reported confidence in the answer",
+                        )
+
             with tab2:
                 st.subheader("Response Analysis")
-                
+
                 # Show answer distribution
                 if "answer_counts" in example:
                     st.markdown("**Answer Distribution**")
                     counts = example["answer_counts"]
-                    chart_data = {"Answer": list(counts.keys()), "Count": list(counts.values())}
+                    chart_data = {
+                        "Answer": list(counts.keys()),
+                        "Count": list(counts.values()),
+                    }
                     st.bar_chart(chart_data, x="Answer", y="Count")
                 else:
                     st.write("No answer distribution data available")
-                
+
                 # Show confidence metrics
                 if "confidence" in example:
                     st.markdown(f"**Confidence Score**: {example['confidence']:.2%}")
-                
+
                 # Show majority voting info
                 if "majority_answer" in example:
                     st.markdown(f"**Majority Answer**: {example['majority_answer']}")
-                
+
                 # Show self-consistency metrics
                 if "all_responses" in example:
                     total_responses = len(example["all_responses"])
                     correct_responses = sum(
-                        1 for resp in example["all_responses"] 
+                        1
+                        for resp in example["all_responses"]
                         if abs(extract_answer(resp) - example["correct"]) < 1e-6
                     )
-                    st.markdown(f"**Self-Consistency**: {correct_responses}/{total_responses} "
-                              f"({correct_responses/total_responses:.2%})")
-                
+                    st.markdown(
+                        f"**Self-Consistency**: {correct_responses}/{total_responses} "
+                        f"({correct_responses/total_responses:.2%})"
+                    )
+
                 # Show error types if available
                 if "error_types" in example:
                     st.subheader("Error Categories")
@@ -674,7 +773,7 @@ def main():
                         st.markdown(f"- {error}")
                 else:
                     st.write("No detailed error categorization available")
-            
+
             with tab3:
                 st.json(example)
 
