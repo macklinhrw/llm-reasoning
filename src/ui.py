@@ -82,20 +82,45 @@ def parse_result_filename(filename):
     """Extract metadata from result filenames."""
     metadata = {
         "full_name": filename,
-        "display_name": filename.replace("evaluation_results-", "").replace(".json", "")
+        "display_name": filename.replace("evaluation_results-", "").replace(".json", ""),
+        "model": "Unknown Model"  # Add default value
     }
     
-    # Extract model name and date using regex
-    model_match = re.search(r"evaluation_results-(.*?)(-\d{4}-\d{2}-\d{2})", filename)
-    if model_match:
-        model_parts = model_match.group(1).split("-")
-        metadata["model"] = " ".join([p.upper() if p == "b" else p.capitalize() for p in model_parts])
-    
+    # Improved regex pattern with fallbacks
+    try:
+        # First try to extract model name from filename
+        model_match = re.search(r"(?:evaluation_results-)?([A-Za-z0-9_.-]+?)(?:-\d{4}|$)", filename)
+        if model_match:
+            model_raw = model_match.group(1)
+            # Clean up model name
+            model_parts = model_raw.replace("_", " ").split("-")
+            # Format parts like "3.2" and "1B" nicely
+            formatted_parts = []
+            for part in model_parts:
+                if part.lower().endswith("b"):
+                    formatted_parts.append(part.upper())
+                else:
+                    formatted_parts.append(part.capitalize())
+            metadata["model"] = " ".join(formatted_parts)
+            
+        # Special case for Qwen models
+        if "qwen" in filename.lower():
+            metadata["model"] = filename.split("-")[0].upper()
+            
+    except Exception as e:
+        st.error(f"Error parsing filename {filename}: {str(e)}")
+
     # Extract date from filename
-    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", filename)
-    if date_match:
-        metadata["date"] = datetime.strptime(date_match.group(1), "%Y-%m-%d").strftime("%b %d, %Y")
-    
+    try:
+        date_match = re.search(r"(\d{4}-\d{2}-\d{2})", filename)
+        if date_match:
+            metadata["date"] = datetime.strptime(date_match.group(1), "%Y-%m-%d").strftime("%b %d, %Y")
+        else:
+            metadata["date"] = "Unknown Date"
+    except Exception as e:
+        metadata["date"] = "Invalid Date"
+        st.error(f"Error parsing date in {filename}: {str(e)}")
+
     return metadata
 
 
@@ -320,8 +345,14 @@ def main():
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    unique_models = sorted({fd["model"] for fd in file_data if fd["model"]}, 
-                                         key=lambda x: x.split()[-1])  # Sort by model size
+                    unique_models = sorted(
+                        {fd.get("model", "Unknown Model") for fd in file_data},
+                        key=lambda x: (
+                            not x.startswith("Llama"),  # Llama first
+                            not x.startswith("Qwen"),   # Then Qwen
+                            x.split()[-1]               # Sort by model size
+                        )
+                    )
                     selected_model = st.selectbox(
                         "Model Family", ["All Models"] + unique_models, index=0
                     )
