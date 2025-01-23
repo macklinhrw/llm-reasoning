@@ -204,52 +204,50 @@ def display_problem_card(problem):
     """Display a problem in a condensed card format with visual indicators."""
     cols = st.columns([3,1,1,1])
     
-    # Problem text
+    # Calculate derived difficulty if not present
+    derived_difficulty = 1 - problem.get('accuracy', 0)
+    
     with cols[0]:
         st.markdown(f"**Question**  \n{problem['question'][:200]}...")
     
-    # Key metrics
     with cols[1]:
-        st.metric("Correct", problem['correct_answer'], 
-                help="Correct answer")
+        st.metric("Correct", problem['correct_answer'])
     with cols[2]:
-        st.metric("Predicted", problem.get('predicted_answer', 'N/A'),
-                help="Model's predicted answer", 
-                delta=f"{'✅' if problem.get('is_correct', False) else '❌'}")
+        pred = problem.get('predicted_answer', 'N/A')
+        st.metric("Predicted", pred, delta="✅" if problem.get('is_correct') else "❌")
     with cols[3]:
-        st.metric("Difficulty", f"{problem.get('difficulty', 0):.2%}",
-                help="Estimated problem difficulty")
+        # Show accuracy instead of difficulty when they're directly related
+        st.metric("Accuracy", f"{problem['accuracy']:.2%}")
 
-    # Visual difficulty indicator
-    difficulty = problem.get('difficulty', 0)
+    # Visual indicator now shows accuracy
+    accuracy = problem['accuracy']
     st.markdown(f"""
     <style>
-        .difficulty-bar {{
+        .accuracy-bar {{
             height: 8px;
-            background: linear-gradient(90deg, #e74c3c {difficulty*100}%, #2ecc71 {difficulty*100}%);
+            background: linear-gradient(90deg, #2ecc71 {accuracy*100}%, #e74c3c {accuracy*100}%);
             border-radius: 4px;
             margin: 8px 0;
         }}
     </style>
-    <div class="difficulty-bar"></div>
+    <div class="accuracy-bar"></div>
     """, unsafe_allow_html=True)
 
-    # Collapsible detailed view
+    # Update detailed view
     with st.expander("Detailed Analysis", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
             if "all_responses" in problem:
                 st.markdown("**Answer Distribution**")
-                dist_data = problem.get("answer_distribution", {})
-                if dist_data:
-                    st.bar_chart(dist_data)
-                else:
-                    st.write("No distribution data available")
+                if problem.get("answer_distribution"):
+                    st.bar_chart(problem["answer_distribution"])
         with col2:
             st.markdown("**Performance Metrics**")
             st.write(f"- Correct Generations: {problem['num_correct']}/{problem['num_generations']}")
-            st.write(f"- Majority Answer: {problem.get('majority_answer', 'N/A')}")
-            st.write(f"- Consensus Confidence: {problem.get('confidence', 'N/A'):.2%}")
+            if 'difficulty' in problem:
+                st.write(f"- Independent Difficulty: {problem['difficulty']:.2%}")
+            else:
+                st.write(f"- Derived Difficulty (1 - Accuracy): {derived_difficulty:.2%}")
 
     st.markdown("---")
 
@@ -263,7 +261,10 @@ def display_problem_details(problem, show_generations=False):
         st.subheader("Solution")
         st.code(problem["solution"], language='text', wrap_lines=True)
 
-    # Display metrics in columns
+    # Calculate derived difficulty if needed
+    derived_difficulty = 1 - problem["accuracy"]
+    
+    # Update metrics display
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Correct Answer", problem["correct_answer"])
@@ -271,9 +272,11 @@ def display_problem_details(problem, show_generations=False):
     with col2:
         if "majority_answer" in problem:
             st.metric("Majority Answer", problem["majority_answer"])
-        st.metric(
-            "Difficulty", f"{problem.get('difficulty', 1-problem['accuracy']):.2%}"
-        )
+        if 'difficulty' in problem:
+            st.metric("Independent Difficulty", f"{problem['difficulty']:.2%}")
+        else:
+            st.metric("Derived Difficulty", f"{derived_difficulty:.2%}",
+                    help="Calculated as 1 - Accuracy")
     with col3:
         st.metric(
             "Correct Generations",
@@ -416,27 +419,34 @@ def main():
             st.markdown("---")
             col_viz1, col_viz2 = st.columns(2)
             with col_viz1:
-                st.markdown("**Difficulty Distribution**")
-                difficulties = [p["difficulty"] for p in data["problems"]]
+                st.markdown("**Accuracy Distribution**")
+                accuracies = [p["accuracy"] for p in data["problems"]]
                 bin_edges = np.linspace(0, 1, 21)
-                hist, bin_edges = np.histogram(difficulties, bins=bin_edges)
+                hist, bin_edges = np.histogram(accuracies, bins=bin_edges)
                 bin_labels = [f"{bin_edges[i]:.2f}-{bin_edges[i+1]:.2f}" for i in range(len(bin_edges)-1)]
 
                 chart_df = pd.DataFrame({
-                    'Difficulty Range': bin_labels,
+                    'Accuracy Range': bin_labels,
                     'Number of Problems': hist
-                }).set_index('Difficulty Range')
+                }).set_index('Accuracy Range')
 
                 st.bar_chart(chart_df, use_container_width=True)
-            
+
             with col_viz2:
-                st.markdown("**Accuracy vs Difficulty**")
-                # Example scatter plot (would need actual data)
-                st.write("Accuracy vs Difficulty Correlation: -0.82")
-                st.scatter_chart(pd.DataFrame({
-                    'difficulty': difficulties,
-                    'accuracy': [1-p["difficulty"] for p in data["problems"]]
-                }))
+                st.markdown("**Performance Correlation**")
+                if 'difficulty' in data["problems"][0]:
+                    # Show actual difficulty correlation if available
+                    difficulties = [p["difficulty"] for p in data["problems"]]
+                    st.scatter_chart(pd.DataFrame({
+                        'Independent Difficulty': difficulties,
+                        'Accuracy': [p["accuracy"] for p in data["problems"]]
+                    }))
+                else:
+                    # Show derived relationship when difficulty is 1-accuracy
+                    st.write("All problems sorted by accuracy")
+                    st.line_chart(pd.DataFrame({
+                        'Accuracy': sorted([p["accuracy"] for p in data["problems"]], reverse=True)
+                    }))
 
             # Problem list
             st.markdown("---")
