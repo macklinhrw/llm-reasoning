@@ -274,7 +274,12 @@ def display_analysis_results(data):
 
 def display_problem_card(problem):
     """Display a problem in a condensed card format with visual indicators."""
-    cols = st.columns([3, 1, 1, 1])
+    annotation_status = "📌" if problem.get("annotations") else ""
+    with st.expander(
+        f"{annotation_status} Problem | Accuracy: {problem['accuracy']:.2%}", 
+        expanded=False
+    ):
+        cols = st.columns([3, 1, 1, 1])
     
     # Add annotation display
     if "annotations" in problem:
