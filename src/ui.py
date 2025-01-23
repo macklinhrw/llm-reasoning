@@ -361,7 +361,7 @@ def main():
 
         # Summary header
         st.subheader("Results Summary")
-        params = loaded_data.get("parameters", {})
+        params = data.get("parameters", {})
 
         cols = st.columns(4)
         with cols[0]:
