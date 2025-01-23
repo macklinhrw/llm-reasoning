@@ -626,7 +626,7 @@ def main():
                 else:
                     problem["annotations"] = {}
 
-            # Display sorted problems
+            # Initialize examples BEFORE creating tabs
             examples = sorted_problems
 
     else:  # Model Results
