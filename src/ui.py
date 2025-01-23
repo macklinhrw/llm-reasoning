@@ -7,7 +7,21 @@ import re
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from pathlib import Path
+from typing import Dict, List
 from utils import extract_answer
+
+# Difficulty types configuration
+DIFFICULTY_TYPES = [
+    "Arithmetic Complexity",
+    "Multi-step Reasoning", 
+    "Ambiguous Wording",
+    "Real-world Knowledge",
+    "Unit Conversion",
+    "Symbolic Reasoning",
+    "Counterintuitive",
+    "Other"
+]
 
 
 @st.cache_resource
@@ -20,6 +34,26 @@ def load_gsm8k_data():
         st.error(f"Error loading dataset: {str(e)}")
         return None
 
+
+def get_annotation_path(data_file: str) -> str:
+    """Get path for annotation file based on data filename."""
+    base_name = os.path.basename(data_file).replace(".json", "")
+    return os.path.join("annotations", f"{base_name}-annotations.json")
+
+def load_annotations(data_file: str) -> Dict[str, dict]:
+    """Load existing annotations for a data file."""
+    annotation_path = get_annotation_path(data_file)
+    if os.path.exists(annotation_path):
+        with open(annotation_path, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_annotations(data_file: str, annotations: Dict[str, dict]):
+    """Save annotations to file."""
+    annotation_path = get_annotation_path(data_file)
+    os.makedirs(os.path.dirname(annotation_path), exist_ok=True)
+    with open(annotation_path, "w") as f:
+        json.dump(annotations, f, indent=2)
 
 def get_result_files(directory="results"):
     """Get all available result files from different subdirectories."""
@@ -241,6 +275,17 @@ def display_analysis_results(data):
 def display_problem_card(problem):
     """Display a problem in a condensed card format with visual indicators."""
     cols = st.columns([3, 1, 1, 1])
+    
+    # Add annotation display
+    if "annotations" in problem:
+        st.markdown("**Annotations**")
+        cols = st.columns(2)
+        with cols[0]:
+            if problem["annotations"].get("difficulty_types"):
+                st.write("Types: " + ", ".join(problem["annotations"]["difficulty_types"]))
+        with cols[1]:
+            if problem["annotations"].get("notes"):
+                st.write(f"Notes: {problem['annotations']['notes']}")
 
     # Calculate derived difficulty if not present
     derived_difficulty = 1 - problem.get("accuracy", 0)
@@ -491,6 +536,62 @@ def main():
 
             st.bar_chart(chart_df, use_container_width=True)
 
+            # Add annotation tab
+            tab_details, tab_annotate = st.tabs(["🔍 Problem Details", "🏷️ Annotation"])
+
+            with tab_annotate:
+                st.subheader("Problem Annotation")
+                
+                # Initialize annotations in session state
+                if "annotations" not in st.session_state:
+                    st.session_state.annotations = load_annotations(file_options[selected_file])
+                
+                current_problem = examples[st.session_state.current_idx]
+                problem_id = current_problem["question"]  # Using question as unique ID
+                
+                # Get existing annotation or create new
+                annotation = st.session_state.annotations.get(problem_id, {
+                    "difficulty_types": [],
+                    "notes": ""
+                })
+
+                # Difficulty type selection
+                selected_types = st.multiselect(
+                    "Difficulty Types",
+                    DIFFICULTY_TYPES,
+                    default=annotation["difficulty_types"],
+                    key=f"types_{problem_id}"
+                )
+                
+                # Notes field
+                notes = st.text_area(
+                    "Additional Notes",
+                    value=annotation["notes"],
+                    height=150,
+                    key=f"notes_{problem_id}"
+                )
+                
+                # Save button
+                if st.button("💾 Save Annotation"):
+                    st.session_state.annotations[problem_id] = {
+                        "difficulty_types": selected_types,
+                        "notes": notes,
+                        "source_file": os.path.basename(file_options[selected_file])
+                    }
+                    save_annotations(file_options[selected_file], st.session_state.annotations)
+                    st.success("Annotation saved!")
+                
+                # Show existing annotations
+                st.markdown("---")
+                st.subheader("All Annotations")
+                if not st.session_state.annotations:
+                    st.write("No annotations saved yet")
+                else:
+                    for idx, (q, ann) in enumerate(st.session_state.annotations.items()):
+                        with st.expander(f"Annotation {idx+1}: {q[:50]}..."):
+                            st.write(f"**Types:** {', '.join(ann['difficulty_types'])}")
+                            st.write(f"**Notes:** {ann['notes']}")
+
             # Problem list
             st.markdown("---")
             st.subheader(f"Filtered Problems ({data['num_problems']})")
@@ -510,6 +611,15 @@ def main():
             sorted_problems = sorted(
                 data["problems"], key=lambda x: x[key], reverse=reverse
             )
+
+            # Add annotations to problems
+            annotations = load_annotations(file_options[selected_file])
+            for problem in sorted_problems:
+                problem_id = problem["question"]
+                if problem_id in annotations:
+                    problem["annotations"] = annotations[problem_id]
+                else:
+                    problem["annotations"] = {}
 
             # Display sorted problems
             examples = sorted_problems
