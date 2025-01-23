@@ -501,16 +501,42 @@ def main():
                                 help="Model's self-reported confidence in the answer")
             
             with tab2:
-                if "analysis" in example:
-                    st.subheader("Detailed Analysis")
-                    st.write(example["analysis"])
-                else:
-                    st.write("No detailed analysis available for this example")
+                st.subheader("Response Analysis")
                 
+                # Show answer distribution
+                if "answer_counts" in example:
+                    st.markdown("**Answer Distribution**")
+                    counts = example["answer_counts"]
+                    chart_data = {"Answer": list(counts.keys()), "Count": list(counts.values())}
+                    st.bar_chart(chart_data, x="Answer", y="Count")
+                else:
+                    st.write("No answer distribution data available")
+                
+                # Show confidence metrics
+                if "confidence" in example:
+                    st.markdown(f"**Confidence Score**: {example['confidence']:.2%}")
+                
+                # Show majority voting info
+                if "majority_answer" in example:
+                    st.markdown(f"**Majority Answer**: {example['majority_answer']}")
+                
+                # Show self-consistency metrics
+                if "all_responses" in example:
+                    total_responses = len(example["all_responses"])
+                    correct_responses = sum(
+                        1 for resp in example["all_responses"] 
+                        if abs(extract_answer(resp) - example["correct"]) < 1e-6
+                    )
+                    st.markdown(f"**Self-Consistency**: {correct_responses}/{total_responses} "
+                              f"({correct_responses/total_responses:.2%})")
+                
+                # Show error types if available
                 if "error_types" in example:
                     st.subheader("Error Categories")
                     for error in example["error_types"]:
                         st.markdown(f"- {error}")
+                else:
+                    st.write("No detailed error categorization available")
             
             with tab3:
                 st.json(example)
