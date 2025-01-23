@@ -6,6 +6,7 @@ import os
 import re
 from datetime import datetime
 import pandas as pd
+import numpy as np
 from utils import extract_answer
 
 
@@ -417,7 +418,16 @@ def main():
             with col_viz1:
                 st.markdown("**Difficulty Distribution**")
                 difficulties = [p["difficulty"] for p in data["problems"]]
-                st.histogram(difficulties)
+                bin_edges = np.linspace(0, 1, 21)
+                hist, bin_edges = np.histogram(difficulties, bins=bin_edges)
+                bin_labels = [f"{bin_edges[i]:.2f}-{bin_edges[i+1]:.2f}" for i in range(len(bin_edges)-1)]
+
+                chart_df = pd.DataFrame({
+                    'Difficulty Range': bin_labels,
+                    'Number of Problems': hist
+                }).set_index('Difficulty Range')
+
+                st.bar_chart(chart_df, use_container_width=True)
             
             with col_viz2:
                 st.markdown("**Accuracy vs Difficulty**")
