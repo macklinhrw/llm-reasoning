@@ -293,6 +293,19 @@ def display_problem_details(problem, show_generations=False):
     if show_generations and "all_responses" in problem:
         st.subheader("All Generations")
         
+        # Precompute correctness for performance
+        correct_answer = problem["correct_answer"]
+        responses = []
+        for response in problem["all_responses"]:
+            extracted_answer = extract_answer(response)
+            is_correct = abs(extracted_answer - correct_answer) < 1e-6 if extracted_answer else False
+            responses.append((response, is_correct))
+
+        # Show stats at top
+        total_correct = sum(1 for r in responses if r[1])
+        st.caption(f"Showing {len(responses)} generations "
+                 f"({total_correct} correct, {len(responses)-total_correct} incorrect)")
+        
         # Add filtering controls
         col1, col2 = st.columns(2)
         with col1:
@@ -302,14 +315,6 @@ def display_problem_details(problem, show_generations=False):
         with col2:
             show_solution = st.checkbox("Show solution alongside", 
                                       key=f"solution_toggle_{problem['question']}")
-
-        # Precompute correctness for performance
-        correct_answer = problem["correct_answer"]
-        responses = []
-        for response in problem["all_responses"]:
-            extracted_answer = extract_answer(response)
-            is_correct = abs(extracted_answer - correct_answer) < 1e-6 if extracted_answer else False
-            responses.append((response, is_correct))
 
         # Apply filter
         if filter_type == "Correct":
@@ -333,11 +338,6 @@ def display_problem_details(problem, show_generations=False):
                         st.code(problem["solution"], language='text', wrap_lines=True)
                 else:
                     st.code(response, language='markdown', wrap_lines=True)
-
-        # Show quick stats
-        total_correct = sum(1 for r in responses if r[1])
-        st.caption(f"Showing {len(filtered)}/{len(responses)} generations "
-                 f"({total_correct} correct, {len(responses)-total_correct} incorrect)")
 
     # Display prompt if available
     if "prompt" in problem and problem["prompt"]:
