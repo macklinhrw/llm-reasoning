@@ -12,16 +12,46 @@ from typing import Dict, List
 from utils import extract_answer
 
 # Difficulty types configuration
-DIFFICULTY_TYPES = [
-    "Arithmetic Complexity",
-    "Multi-step Reasoning", 
-    "Ambiguous Wording",
-    "Real-world Knowledge",
-    "Unit Conversion",
-    "Symbolic Reasoning",
-    "Counterintuitive",
-    "Other"
-]
+DIFFICULTY_CONFIG_FILE = "config/difficulty_types.json"
+
+def load_difficulty_types():
+    """Load difficulty types from configuration file."""
+    default_types = [
+        "Arithmetic Complexity",
+        "Multi-step Reasoning",
+        "Ambiguous Wording",
+        "Real-world Knowledge",
+        "Unit Conversion",
+        "Symbolic Reasoning",
+        "Counterintuitive",
+        "Other"
+    ]
+    
+    try:
+        os.makedirs(os.path.dirname(DIFFICULTY_CONFIG_FILE), exist_ok=True)
+        if os.path.exists(DIFFICULTY_CONFIG_FILE):
+            with open(DIFFICULTY_CONFIG_FILE, "r") as f:
+                return json.load(f)
+        # Save default types if file doesn't exist
+        with open(DIFFICULTY_CONFIG_FILE, "w") as f:
+            json.dump(default_types, f)
+        return default_types
+    except Exception as e:
+        st.error(f"Error loading difficulty types: {str(e)}")
+        return default_types
+
+def save_difficulty_types(types):
+    """Save updated difficulty types to configuration file."""
+    try:
+        with open(DIFFICULTY_CONFIG_FILE, "w") as f:
+            json.dump(types, f, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"Error saving difficulty types: {str(e)}")
+        return False
+
+def get_difficulty_types():
+    return load_difficulty_types()
 
 
 @st.cache_resource
@@ -586,12 +616,40 @@ def main():
                 })
 
                 # Difficulty type selection
-                selected_types = st.multiselect(
-                    "Difficulty Types",
-                    DIFFICULTY_TYPES,
-                    default=annotation["difficulty_types"],
-                    key=f"types_{problem_id}"
-                )
+                difficulty_types = load_difficulty_types()
+
+                # Add type management controls
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    selected_types = st.multiselect(
+                        "Difficulty Types",
+                        difficulty_types,
+                        default=annotation["difficulty_types"],
+                        key=f"types_{problem_id}"
+                    )
+
+                with col2:
+                    if st.button("✏️ Edit Types", help="Modify available difficulty types"):
+                        st.session_state.edit_types = True
+
+                if st.session_state.get('edit_types'):
+                    with st.expander("📝 Edit Difficulty Types", expanded=True):
+                        new_types = st.text_area(
+                            "Edit difficulty types (comma-separated)",
+                            value=", ".join(difficulty_types),
+                            height=150
+                        )
+                        
+                        if st.button("💾 Save Types"):
+                            updated_types = [t.strip() for t in new_types.split(",") if t.strip()]
+                            if save_difficulty_types(updated_types):
+                                st.session_state.difficulty_types = updated_types
+                                st.success("Types updated!")
+                                st.session_state.edit_types = False
+                                st.rerun()
+                        
+                        if st.button("❌ Cancel"):
+                            st.session_state.edit_types = False
                 
                 # Notes field
                 notes = st.text_area(
