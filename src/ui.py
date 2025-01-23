@@ -767,7 +767,7 @@ def main():
                                     st.markdown("*No types specified*")
                                 
                                 # Add delete button
-                                if st.button("🗑️ Delete", key=f"delete_{q}"):
+                                if st.button("🗑️ Delete", key=f"delete_{hash(q)}"):
                                     st.session_state.pending_deletion = q
 
                                 # Handle deletion confirmation
@@ -776,17 +776,17 @@ def main():
                                     
                                     col1, col2 = st.columns(2)
                                     with col1:
-                                        if st.button("✅ Confirm Delete"):
+                                        if st.button("✅ Confirm Delete", key=f"confirm_delete_{hash(q)}"):
                                             del st.session_state.annotations[q]
                                             save_annotations(file_options[selected_file], st.session_state.annotations)
                                             del st.session_state.pending_deletion
                                             st.rerun()
                                     with col2:
-                                        if st.button("❌ Cancel"):
+                                        if st.button("❌ Cancel", key=f"cancel_delete_{hash(q)}"):
                                             del st.session_state.pending_deletion
                                             st.rerun()
                                 
-                                if st.button("Go to Annotation", key=f"goto_{q[:20]}"):
+                                if st.button("Go to Annotation", key=f"goto_{hash(q)}"):
                                     problem_ids = [p["question"] for p in examples]
                                     if q in problem_ids:
                                         st.session_state.current_idx = problem_ids.index(q)
