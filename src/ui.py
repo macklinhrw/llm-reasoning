@@ -612,8 +612,18 @@ def main():
                 if "annotations" not in st.session_state:
                     st.session_state.annotations = load_annotations(file_options[selected_file])
                 
+                # Always get fresh problem reference when index changes
                 current_problem = examples[st.session_state.current_idx]
-                problem_id = current_problem["question"]  # Using question as unique ID
+                problem_id = current_problem["question"]
+                
+                # Clear existing widget states for previous problem
+                if st.session_state.get("last_problem_id") != problem_id:
+                    keys_to_remove = [f"types_{problem_id}", f"notes_{problem_id}"]
+                    for key in keys_to_remove:
+                        if key in st.session_state:
+                            del st.session_state[key]
+                    st.session_state.last_problem_id = problem_id
+                    st.rerun()
                 
                 # Get existing annotation or create new
                 annotation = st.session_state.annotations.get(problem_id, {
@@ -631,7 +641,7 @@ def main():
                         "Difficulty Types",
                         difficulty_types,
                         default=annotation["difficulty_types"],
-                        key=f"types_{problem_id}"  # Already unique per problem
+                        key=f"types_{hash(problem_id)}"  # Use hash for shorter unique key
                     )
 
                 with col2:
@@ -663,7 +673,7 @@ def main():
                     "Additional Notes",
                     value=annotation["notes"],
                     height=150,
-                    key=f"notes_{problem_id}"
+                    key=f"notes_{hash(problem_id)}"  # Use hash here too
                 )
                 
                 # Save button
@@ -679,7 +689,7 @@ def main():
                 # Add delete button for existing annotations
                 if problem_id in st.session_state.annotations:
                     st.markdown("---")
-                    if st.button("🗑️ Delete Annotation", type="primary", key=f"delete_{problem_id}"):
+                    if st.button("🗑️ Delete Annotation", type="primary", key=f"delete_{hash(problem_id)}"):
                         st.session_state.pending_deletion = problem_id
 
                 # Handle deletion confirmation
