@@ -495,6 +495,14 @@ def main():
         .stProgress > div > div > div > div {
             background-color: #2ecc71;
         }
+        /* Set fixed height for delete containers */
+        [data-testid="stVerticalBlock"] > [style*="flex-direction: column"] > [data-testid="stVerticalBlock"] {
+            min-height: 80px !important;
+        }
+        /* Hide empty space in columns */
+        .stButton > button {
+            margin: 4px 0;
+        }
     </style>
     """, unsafe_allow_html=True)
     st.title("Dataset Viewer")
@@ -742,44 +750,52 @@ def main():
                 
                 # Fixed delete section at the bottom
                 st.markdown("---")
-                del_col1, del_col2 = st.columns([4, 1])
-                with del_col2:
-                    if problem_id in st.session_state.annotations:
-                        # Create a container with fixed height
-                        delete_container = st.container(height=60)
+                if problem_id in st.session_state.annotations:
+                    # Fixed height container using columns to maintain layout
+                    delete_container = st.container()
+                    with delete_container:
+                        cols = st.columns([1,1,8])  # Same columns for both states
                         
                         if not st.session_state.get("show_delete_confirm"):
-                            with delete_container:
+                            # Delete button state
+                            with cols[0]:
                                 if st.button(
-                                    "🗑️ Delete Annotation", 
-                                    type="primary", 
-                                    use_container_width=True
+                                    "🗑️ Delete", 
+                                    key=f"delete_{problem_id}",
+                                    use_container_width=True,
+                                    help="Delete this annotation"
                                 ):
                                     st.session_state.show_delete_confirm = True
                                     st.rerun()
+                            # Empty columns to reserve space
+                            with cols[1]:
+                                st.empty()
+                            with cols[2]:
+                                st.empty()
                         else:
-                            with delete_container:
-                                cols = st.columns([1,1,4])
-                                with cols[0]:
-                                    if st.button(
-                                        "✅", 
-                                        help="Confirm deletion",
-                                        key=f"confirm_del_{problem_id}",
-                                        use_container_width=True
-                                    ):
-                                        del st.session_state.annotations[problem_id]
-                                        save_annotations(file_options[selected_file], st.session_state.annotations)
-                                        st.session_state.show_delete_confirm = False
-                                        st.rerun()
-                                with cols[1]:
-                                    if st.button(
-                                        "❌", 
-                                        help="Cancel deletion",
-                                        key=f"cancel_del_{problem_id}",
-                                        use_container_width=True
-                                    ):
-                                        st.session_state.show_delete_confirm = False
-                                        st.rerun()
+                            # Confirmation state (uses same columns)
+                            with cols[0]:
+                                if st.button(
+                                    "✅ Confirm", 
+                                    key=f"confirm_{problem_id}",
+                                    use_container_width=True,
+                                    type="primary"
+                                ):
+                                    # Perform deletion logic
+                                    del st.session_state.annotations[problem_id]
+                                    save_annotations(file_options[selected_file], st.session_state.annotations)
+                                    st.session_state.show_delete_confirm = False
+                                    st.rerun()
+                            with cols[1]:
+                                if st.button(
+                                    "❌ Cancel", 
+                                    key=f"cancel_{problem_id}",
+                                    use_container_width=True
+                                ):
+                                    st.session_state.show_delete_confirm = False
+                                    st.rerun()
+                            with cols[2]:
+                                st.empty()  # Maintain column structure
                 
 
             with tab_browser:
@@ -851,16 +867,18 @@ def main():
                                 
                                 # Add delete button with fixed container
                                 unique_key = f"{idx}_{hash(q)}"  # Combine index and hash for uniqueness
-                                delete_container = st.container(height=45)
-                                if "pending_deletion" in st.session_state and st.session_state.pending_deletion == q:
-                                    with delete_container:
-                                        cols = st.columns([2,2,6])
+                                delete_container = st.container()
+                                with delete_container:
+                                    cols = st.columns([1,1,8])  # Same columns for both states
+                                    
+                                    if "pending_deletion" in st.session_state and st.session_state.pending_deletion == q:
+                                        # Confirmation state
                                         with cols[0]:
                                             if st.button(
                                                 "✅ Confirm", 
                                                 key=f"confirm_{unique_key}",
-                                                help="Permanently delete this annotation",
-                                                use_container_width=True
+                                                use_container_width=True,
+                                                type="primary"
                                             ):
                                                 del st.session_state.annotations[q]
                                                 save_annotations(file_options[selected_file], st.session_state.annotations)
@@ -870,21 +888,28 @@ def main():
                                             if st.button(
                                                 "❌ Cancel", 
                                                 key=f"cancel_{unique_key}",
-                                                help="Keep this annotation",
                                                 use_container_width=True
                                             ):
                                                 del st.session_state.pending_deletion
                                                 st.rerun()
-                                else:
-                                    with delete_container:
-                                        if st.button(
-                                            "🗑️ Delete", 
-                                            key=f"delete_{unique_key}",
-                                            use_container_width=True,
-                                            help="Delete this annotation"
-                                        ):
-                                            st.session_state.pending_deletion = q
-                                            st.rerun()
+                                        with cols[2]:
+                                            st.empty()  # Maintain column structure
+                                    else:
+                                        # Delete button state
+                                        with cols[0]:
+                                            if st.button(
+                                                "🗑️ Delete", 
+                                                key=f"delete_{unique_key}",
+                                                use_container_width=True,
+                                                help="Delete this annotation"
+                                            ):
+                                                st.session_state.pending_deletion = q
+                                                st.rerun()
+                                        # Empty columns to reserve space
+                                        with cols[1]:
+                                            st.empty()
+                                        with cols[2]:
+                                            st.empty()
                     
                                 if st.button("Go to Annotation", key=f"goto_{unique_key}"):
                                     problem_ids = [p["question"] for p in examples]
