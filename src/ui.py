@@ -623,8 +623,16 @@ def main():
                 if "sorted_examples" not in st.session_state:
                     st.session_state.sorted_examples = examples
                 
-                current_problem = st.session_state.sorted_examples[st.session_state.current_idx]
+                # Get fresh reference to the current problem
+                current_idx = st.session_state.current_idx
+                examples = st.session_state.sorted_examples  # Get fresh sorted list
+                current_problem = examples[current_idx]
                 problem_id = current_problem["question"]
+
+                # Add bounds checking
+                if current_idx >= len(examples):
+                    st.session_state.current_idx = len(examples) - 1
+                    st.rerun()
 
                 # Clear widget states when problem changes
                 if "last_problem_id" not in st.session_state:
@@ -969,6 +977,7 @@ def main():
         if st.button("⬅️ Prev"):
             st.session_state.current_idx = max(0, st.session_state.current_idx - 1)
             st.session_state.input_idx = st.session_state.current_idx
+            st.rerun()  # Force immediate update
 
     with col2:
         if st.button("Next ➡️"):
@@ -976,6 +985,7 @@ def main():
                 total_examples - 1, st.session_state.current_idx + 1
             )
             st.session_state.input_idx = st.session_state.current_idx
+            st.rerun()  # Force immediate update
 
     with col4:
         st.number_input(
@@ -986,7 +996,10 @@ def main():
             label_visibility="collapsed",
         )
         if st.session_state.input_idx != st.session_state.current_idx:
-            st.session_state.current_idx = st.session_state.input_idx
+            new_idx = max(0, min(st.session_state.input_idx, len(examples)-1))
+            if new_idx != st.session_state.current_idx:
+                st.session_state.current_idx = new_idx
+                st.rerun()
 
     # Display progress
     st.progress(st.session_state.current_idx / (total_examples - 1))
