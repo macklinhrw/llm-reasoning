@@ -482,6 +482,21 @@ def display_problem_details(problem, show_generations=False):
 
 def main():
     st.set_page_config(page_title="Dataset Viewer", page_icon="🔢", layout="wide")
+    st.markdown("""
+    <style>
+        .stCheckbox label {
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+        }
+        .stCheckbox {
+            margin: 8px 0;
+        }
+        .stProgress > div > div > div > div {
+            background-color: #2ecc71;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     st.title("Dataset Viewer")
 
     # Initialize session state
@@ -658,20 +673,34 @@ def main():
 
                 # Difficulty type selection
                 difficulty_types = load_difficulty_types()
-
+                
                 # Add type management controls
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    selected_types = st.multiselect(
-                        "Difficulty Types",
-                        difficulty_types,
-                        default=annotation["difficulty_types"],
-                        key=f"types_{hash(problem_id)}"  # Use hash for shorter unique key
-                    )
+                st.markdown("**Difficulty Types**")
+                col1, col2 = st.columns(2)
+                tag_columns = [col1, col2]
+                current_col = 0
 
-                with col2:
-                    if st.button("✏️ Edit Types", help="Modify available difficulty types"):
-                        st.session_state.edit_types = True
+                selected_types = annotation.get("difficulty_types", [])
+                type_states = {}
+
+                # Display tags in a grid with full visibility
+                for idx, tag in enumerate(difficulty_types):
+                    with tag_columns[current_col]:
+                        # Store state for each tag separately
+                        type_states[tag] = st.checkbox(
+                            tag, 
+                            value=tag in selected_types,
+                            key=f"tag_{hash(problem_id)}_{idx}",
+                            label_visibility="visible"
+                        )
+                    current_col = (current_col + 1) % len(tag_columns)
+
+                # Collect selected tags
+                selected_types = [tag for tag, checked in type_states.items() if checked]
+
+                # Add edit types button
+                if st.button("✏️ Edit Types", help="Modify available difficulty types"):
+                    st.session_state.edit_types = True
 
                 if st.session_state.get('edit_types'):
                     with st.expander("📝 Edit Difficulty Types", expanded=True):
@@ -711,26 +740,26 @@ def main():
                     save_annotations(file_options[selected_file], st.session_state.annotations)
                     st.success("Annotation saved!")
                 
-                # Add delete button for existing annotations
-                if problem_id in st.session_state.annotations:
-                    st.markdown("---")
-                    if st.button("🗑️ Delete Annotation", type="primary", key=f"delete_{hash(problem_id)}"):
-                        st.session_state.pending_deletion = problem_id
+                # Fixed delete section at the bottom
+                st.markdown("---")
+                del_col1, del_col2 = st.columns([4, 1])
+                with del_col2:
+                    if problem_id in st.session_state.annotations:
+                        if st.button("🗑️ Delete Annotation", type="primary"):
+                            st.session_state.show_delete_confirm = True
 
-                # Handle deletion confirmation
-                if "pending_deletion" in st.session_state and st.session_state.pending_deletion == problem_id:
-                    st.warning("Confirm deletion?")
-                    col1, col2 = st.columns(2)
-                    with col1:
+                if st.session_state.get("show_delete_confirm"):
+                    st.warning("Are you sure you want to delete this annotation?")
+                    conf_col1, conf_col2, conf_col3 = st.columns([1, 1, 8])
+                    with conf_col1:
                         if st.button("✅ Confirm Delete"):
-                            del st.session_state.annotations[st.session_state.pending_deletion]
+                            del st.session_state.annotations[problem_id]
                             save_annotations(file_options[selected_file], st.session_state.annotations)
-                            del st.session_state.pending_deletion
-                            st.session_state.current_idx = max(0, st.session_state.current_idx - 1)
+                            st.session_state.show_delete_confirm = False
                             st.rerun()
-                    with col2:
+                    with conf_col2:
                         if st.button("❌ Cancel"):
-                            del st.session_state.pending_deletion
+                            st.session_state.show_delete_confirm = False
                             st.rerun()
                 
 
@@ -970,40 +999,37 @@ def main():
     total_examples = len(examples)
     st.sidebar.markdown(f"Total examples: {total_examples}")
 
-    # Navigation controls
-    col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
-
-    with col1:
-        if st.button("⬅️ Prev"):
+    # Fixed navigation controls at the top
+    st.markdown("---")
+    nav_col1, nav_col2, nav_col3 = st.columns([1, 1, 2])
+    with nav_col1:
+        if st.button("⬅️ Previous Problem"):
             st.session_state.current_idx = max(0, st.session_state.current_idx - 1)
-            st.session_state.input_idx = st.session_state.current_idx
-            st.rerun()  # Force immediate update
-
-    with col2:
-        if st.button("Next ➡️"):
-            st.session_state.current_idx = min(
-                total_examples - 1, st.session_state.current_idx + 1
-            )
-            st.session_state.input_idx = st.session_state.current_idx
-            st.rerun()  # Force immediate update
-
-    with col4:
-        st.number_input(
-            "Go to",
-            min_value=0,
-            max_value=total_examples - 1,
-            key="input_idx",
-            label_visibility="collapsed",
+            st.rerun()
+    with nav_col2:
+        if st.button("Next Problem ➡️"):
+            st.session_state.current_idx = min(len(examples)-1, st.session_state.current_idx + 1)
+            st.rerun()
+    with nav_col3:
+        new_idx = st.number_input(
+            "Go to Problem #",
+            min_value=1,
+            max_value=len(examples),
+            value=st.session_state.current_idx + 1,
+            key="nav_input"
         )
-        if st.session_state.input_idx != st.session_state.current_idx:
-            new_idx = max(0, min(st.session_state.input_idx, len(examples)-1))
-            if new_idx != st.session_state.current_idx:
-                st.session_state.current_idx = new_idx
-                st.rerun()
-
-    # Display progress
-    st.progress(st.session_state.current_idx / (total_examples - 1))
-    st.markdown(f"**Example {st.session_state.current_idx + 1} of {total_examples}**")
+        if new_idx-1 != st.session_state.current_idx:
+            st.session_state.current_idx = new_idx - 1
+            st.rerun()
+    
+    # Progress indicator
+    progress_col1, progress_col2 = st.columns([1, 10])
+    with progress_col1:
+        st.markdown(f"**{st.session_state.current_idx + 1}/{len(examples)}**")
+    with progress_col2:
+        st.progress((st.session_state.current_idx + 1) / len(examples))
+    
+    st.markdown("---")
 
     # Display current example
     if 0 <= st.session_state.current_idx < total_examples:
