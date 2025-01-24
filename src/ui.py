@@ -631,9 +631,12 @@ def main():
                     st.session_state.last_problem_id = problem_id
                 
                 if st.session_state.last_problem_id != problem_id:
-                    # Clear previous widget states
-                    keys_to_remove = [f"types_{st.session_state.last_problem_id}", 
-                                    f"notes_{st.session_state.last_problem_id}"]
+                    # Clear previous widget states using hashed keys
+                    prev_id = st.session_state.last_problem_id
+                    keys_to_remove = [
+                        f"types_{hash(prev_id)}",
+                        f"notes_{hash(prev_id)}"
+                    ]
                     for key in keys_to_remove:
                         if key in st.session_state:
                             del st.session_state[key]
