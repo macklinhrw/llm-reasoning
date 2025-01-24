@@ -1068,7 +1068,7 @@ def main():
         if data_source in ["Analysis Results", "Difficulty Analysis"]:
             show_generations = st.checkbox(
                 "Show all generations",
-                key=f"show_gens_{hash(problem['question'])}"  # Unique key per problem
+                key=f"show_gens_{st.session_state.current_idx}"  # Use current index as key
             )
             display_problem_details(example, show_generations)
         elif data_source == "GSM8K Dataset":
