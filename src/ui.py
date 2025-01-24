@@ -753,13 +753,11 @@ def main():
 
                 with button_col2:
                     if problem_id in st.session_state.annotations:
-                        if not st.session_state.get("show_delete_confirm"):
-                            if st.button("🗑️ Delete Annotation", 
-                                       type="primary", 
-                                       use_container_width=True,
-                                       key=f"delete_{problem_id}"):
-                                st.session_state.show_delete_confirm = True
-                        else:
+                        # Initialize show_delete_confirm in session state
+                        if "show_delete_confirm" not in st.session_state:
+                            st.session_state.show_delete_confirm = False
+                            
+                        if st.session_state.show_delete_confirm:
                             cols = st.columns(2)
                             with cols[0]:
                                 if st.button("✅ Confirm", 
@@ -775,6 +773,14 @@ def main():
                                            key=f"cancel_{problem_id}",
                                            use_container_width=True):
                                     st.session_state.show_delete_confirm = False
+                                    st.rerun()
+                        else:
+                            if st.button("🗑️ Delete Annotation", 
+                                       type="primary", 
+                                       use_container_width=True,
+                                       key=f"delete_{problem_id}"):
+                                st.session_state.show_delete_confirm = True
+                                st.rerun()
 
                 # Add separator below buttons to prevent content shift
                 st.markdown("---")
