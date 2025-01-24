@@ -589,19 +589,18 @@ def main():
                 )
 
             # Sort problems and persist in session state
-            if "sorted_problems" not in st.session_state or any([
-                st.session_state.get("sort_by_1") != sort_by,
-                st.session_state.get("sort_order_1") != sort_order
-            ]):
+            if "sorted_examples" not in st.session_state or \
+                st.session_state.get("current_sort") != (sort_by, sort_order):
+                
                 reverse = sort_order == "Descending"
                 key = "difficulty" if sort_by == "Difficulty" else "accuracy"
+                
                 st.session_state.sorted_examples = sorted(
-                    data["problems"], 
-                    key=lambda x: x[key], 
+                    data["problems"],
+                    key=lambda x: x[key],
                     reverse=reverse
                 )
-                st.session_state.sort_by_1 = sort_by
-                st.session_state.sort_order_1 = sort_order
+                st.session_state.current_sort = (sort_by, sort_order)
                 st.session_state.current_idx = 0  # Reset index when sorting changes
 
             examples = st.session_state.sorted_examples
