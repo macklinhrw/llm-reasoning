@@ -755,7 +755,7 @@ def main():
                     end_idx = min(start_idx + items_per_page, len(filtered_annotations))
                     
                     # Display annotation cards in columns
-                    for q, ann in filtered_annotations[start_idx:end_idx]:
+                    for idx, (q, ann) in enumerate(filtered_annotations[start_idx:end_idx]):
                         with st.expander(f"📌 {q[:50]}...", expanded=False):
                             cols = st.columns([3, 1])
                             with cols[0]:
