@@ -311,16 +311,24 @@ def display_problem_card(problem):
     ):
         cols = st.columns([3, 1, 1, 1])
     
-    # Add annotation display
-    if "annotations" in problem:
-        st.markdown("**Annotations**")
-        cols = st.columns(2)
-        with cols[0]:
-            if problem["annotations"].get("difficulty_types"):
-                st.write("Types: " + ", ".join(problem["annotations"]["difficulty_types"]))
-        with cols[1]:
-            if problem["annotations"].get("notes"):
-                st.write(f"Notes: {problem['annotations']['notes']}")
+    # Add annotation display with toggle
+    show_annotations = st.checkbox(
+        "Show annotations",
+        value=False,
+        key=f"show_annotations_{problem['question']}"  # Unique key per problem
+    )
+
+    if show_annotations and "annotations" in problem:
+        with st.expander("📌 Annotations", expanded=True):
+            cols = st.columns(2)
+            with cols[0]:
+                if problem["annotations"].get("difficulty_types"):
+                    st.write("**Difficulty Types**")
+                    st.write(", ".join(problem["annotations"]["difficulty_types"]))
+            with cols[1]:
+                if problem["annotations"].get("notes"):
+                    st.write("**Notes**")
+                    st.write(problem["annotations"]["notes"])
 
     # Calculate derived difficulty if not present
     derived_difficulty = 1 - problem.get("accuracy", 0)
