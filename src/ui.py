@@ -845,7 +845,7 @@ def main():
 
             # Add annotations to problems
             annotations = load_annotations(file_options[selected_file])
-            for problem in sorted_problems:
+            for problem in st.session_state.sorted_examples:
                 problem_id = problem["question"]
                 if problem_id in annotations:
                     problem["annotations"] = annotations[problem_id]
@@ -853,7 +853,7 @@ def main():
                     problem["annotations"] = {}
 
             # Initialize examples BEFORE creating tabs
-            examples = sorted_problems
+            examples = st.session_state.sorted_examples
 
     else:  # Model Results
         # Get available result files
