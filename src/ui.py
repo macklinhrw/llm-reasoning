@@ -777,26 +777,27 @@ def main():
                                     st.markdown("*No types specified*")
                                 
                                 # Add delete button
-                                if st.button("🗑️ Delete", key=f"delete_{hash(q)}"):
+                                unique_key = f"{idx}_{hash(q)}"  # Combine index and hash for uniqueness
+                                if st.button("🗑️ Delete", key=f"delete_{unique_key}"):
                                     st.session_state.pending_deletion = q
 
                                 # Handle deletion confirmation
                                 if "pending_deletion" in st.session_state and st.session_state.pending_deletion == q:
                                     st.warning(f"Confirm deletion for: {q[:50]}...?")
-                                    
+                        
                                     col1, col2 = st.columns(2)
                                     with col1:
-                                        if st.button("✅ Confirm Delete", key=f"confirm_delete_{hash(q)}"):
+                                        if st.button("✅ Confirm Delete", key=f"confirm_{unique_key}"):
                                             del st.session_state.annotations[q]
                                             save_annotations(file_options[selected_file], st.session_state.annotations)
                                             del st.session_state.pending_deletion
                                             st.rerun()
                                     with col2:
-                                        if st.button("❌ Cancel", key=f"cancel_delete_{hash(q)}"):
+                                        if st.button("❌ Cancel", key=f"cancel_{unique_key}"):
                                             del st.session_state.pending_deletion
                                             st.rerun()
-                                
-                                if st.button("Go to Annotation", key=f"goto_{hash(q)}"):
+                    
+                                if st.button("Go to Annotation", key=f"goto_{unique_key}"):
                                     problem_ids = [p["question"] for p in examples]
                                     if q in problem_ids:
                                         st.session_state.current_idx = problem_ids.index(q)
