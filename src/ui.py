@@ -588,15 +588,23 @@ def main():
                     key="sort_order_1"  # Unique key
                 )
 
-            # Sort problems
-            reverse = sort_order == "Descending"
-            key = "difficulty" if sort_by == "Difficulty" else "accuracy"
-            sorted_problems = sorted(
-                data["problems"], key=lambda x: x[key], reverse=reverse
-            )
+            # Sort problems and persist in session state
+            if "sorted_problems" not in st.session_state or any([
+                st.session_state.get("sort_by_1") != sort_by,
+                st.session_state.get("sort_order_1") != sort_order
+            ]):
+                reverse = sort_order == "Descending"
+                key = "difficulty" if sort_by == "Difficulty" else "accuracy"
+                st.session_state.sorted_examples = sorted(
+                    data["problems"], 
+                    key=lambda x: x[key], 
+                    reverse=reverse
+                )
+                st.session_state.sort_by_1 = sort_by
+                st.session_state.sort_order_1 = sort_order
+                st.session_state.current_idx = 0  # Reset index when sorting changes
 
-            # Initialize examples with sorted problems
-            examples = sorted_problems
+            examples = st.session_state.sorted_examples
 
             # Create tabs AFTER initializing examples
             tab_details, tab_annotate, tab_browser = st.tabs([
@@ -612,18 +620,25 @@ def main():
                 if "annotations" not in st.session_state:
                     st.session_state.annotations = load_annotations(file_options[selected_file])
                 
-                # Always get fresh problem reference when index changes
-                current_problem = examples[st.session_state.current_idx]
-                problem_id = current_problem["question"]
+                # Get current problem from persisted examples
+                if "sorted_examples" not in st.session_state:
+                    st.session_state.sorted_examples = examples
                 
-                # Clear existing widget states for previous problem
-                if st.session_state.get("last_problem_id") != problem_id:
-                    keys_to_remove = [f"types_{problem_id}", f"notes_{problem_id}"]
+                current_problem = st.session_state.sorted_examples[st.session_state.current_idx]
+                problem_id = current_problem["question"]
+
+                # Clear widget states when problem changes
+                if "last_problem_id" not in st.session_state:
+                    st.session_state.last_problem_id = problem_id
+                
+                if st.session_state.last_problem_id != problem_id:
+                    # Clear previous widget states
+                    keys_to_remove = [f"types_{st.session_state.last_problem_id}", 
+                                    f"notes_{st.session_state.last_problem_id}"]
                     for key in keys_to_remove:
                         if key in st.session_state:
                             del st.session_state[key]
                     st.session_state.last_problem_id = problem_id
-                    st.rerun()
                 
                 # Get existing annotation or create new
                 annotation = st.session_state.annotations.get(problem_id, {
