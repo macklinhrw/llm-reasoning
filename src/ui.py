@@ -696,23 +696,31 @@ def main():
                 tag_columns = [col1, col2]
                 current_col = 0
 
+                # Create safe ID for session state keys
+                safe_id = problem_id.replace(" ", "_").replace(".", "")[:50]
+                
+                # Initialize selected types from annotation
                 selected_types = annotation.get("difficulty_types", [])
-                type_states = {}
 
-                # Display tags in a grid with full visibility
+                # Display tags with stable session state
                 for idx, tag in enumerate(difficulty_types):
                     with tag_columns[current_col]:
-                        # Store state for each tag separately
-                        type_states[tag] = st.checkbox(
-                            tag, 
-                            value=tag in selected_types,
-                            key=f"tag_{hash(problem_id)}_{idx}",
+                        # Use a guaranteed unique key structure
+                        key = f"type_{safe_id}_{tag}"
+                        
+                        # Initialize state if not exists
+                        if key not in st.session_state:
+                            st.session_state[key] = tag in selected_types
+                            
+                        checked = st.checkbox(
+                            tag,
+                            value=st.session_state[key],
+                            key=key,
                             label_visibility="visible"
                         )
+                        if checked:
+                            selected_types.append(tag)
                     current_col = (current_col + 1) % len(tag_columns)
-
-                # Collect selected tags
-                selected_types = [tag for tag, checked in type_states.items() if checked]
 
                 # Add edit types button
                 if st.button("✏️ Edit Types", help="Modify available difficulty types"):
@@ -738,12 +746,16 @@ def main():
                             st.session_state.edit_types = False
                             st.rerun()  # Force immediate UI refresh
                 
-                # Notes field
+                # Notes field with stable state management
+                notes_key = f"notes_{safe_id}"
+                if notes_key not in st.session_state:
+                    st.session_state[notes_key] = annotation.get("notes", "")
+                    
                 notes = st.text_area(
                     "Additional Notes",
-                    value=annotation["notes"],
+                    value=st.session_state[notes_key],
                     height=150,
-                    key=f"notes_{hash(problem_id)}"  # Use hash here too
+                    key=notes_key
                 )
                 
                 # Create a stable button row
@@ -751,12 +763,19 @@ def main():
 
                 with button_col1:
                     if st.button("💾 Save Annotation", use_container_width=True):
+                        # Capture current state directly
+                        current_types = [
+                            tag for tag in difficulty_types
+                            if st.session_state[f"type_{safe_id}_{tag}"]
+                        ]
+                        
                         st.session_state.annotations[problem_id] = {
-                            "difficulty_types": selected_types,
-                            "notes": notes,
+                            "difficulty_types": current_types,
+                            "notes": st.session_state[notes_key],
                             "source_file": os.path.basename(file_options[selected_file])
                         }
                         save_annotations(file_options[selected_file], st.session_state.annotations)
+                        st.rerun()  # Force immediate refresh to prevent state conflicts
                         st.success("Annotation saved!")
 
                 with button_col2:
