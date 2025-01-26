@@ -714,7 +714,6 @@ def main():
                             
                         checked = st.checkbox(
                             tag,
-                            value=st.session_state[key],
                             key=key,
                             label_visibility="visible"
                         )
