@@ -699,18 +699,18 @@ def main():
                 # Create safe ID for session state keys
                 safe_id = problem_id.replace(" ", "_").replace(".", "")[:50]
                 
-                # Initialize selected types from annotation
-                selected_types = annotation.get("difficulty_types", [])
+                # Initialize selected types as empty list first
+                selected_types = []
 
-                # Display tags with stable session state
+                # Display tags with fresh state collection
                 for idx, tag in enumerate(difficulty_types):
                     with tag_columns[current_col]:
                         # Use a guaranteed unique key structure
                         key = f"type_{safe_id}_{tag}"
                         
-                        # Initialize state if not exists
+                        # Initialize based on existing annotation
                         if key not in st.session_state:
-                            st.session_state[key] = tag in selected_types
+                            st.session_state[key] = tag in annotation.get("difficulty_types", [])
                             
                         checked = st.checkbox(
                             tag,
@@ -718,7 +718,7 @@ def main():
                             label_visibility="visible"
                         )
                         if checked:
-                            selected_types.append(tag)
+                            selected_types.append(tag)  # Only add checked values
                     current_col = (current_col + 1) % len(tag_columns)
 
                 # Add edit types button
@@ -880,7 +880,9 @@ def main():
                                     st.markdown("*No types specified*")
                                 
                                 # Add delete button with confirmation
-                                unique_key = f"{idx}_{hash(q)}"  # Combine index and hash for uniqueness
+                                # Create stable keys using clean string format
+                                unique_key = f"browser_{q[:50]}_{tag}"  # Truncate question for stability
+                                unique_key = re.sub(r'\W+', '_', unique_key)  # Remove special chars
                                 
                                 if "pending_deletion" in st.session_state and st.session_state.pending_deletion == q:
                                     cols = st.columns(2)
