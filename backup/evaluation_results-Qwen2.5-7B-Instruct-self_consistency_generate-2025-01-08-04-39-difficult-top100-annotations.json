@@ -1,0 +1,30 @@
+{
+  "If Marcy works for the same company for 40 years, she gets an annual pension of $50,000/year. Starting after 20 years, she becomes entitled to 5% of the value of the pension per year. If she quits after 30 years, what will her annual pension be?": {
+    "difficulty_types": [
+      "Other",
+      "Other",
+      "Other"
+    ],
+    "notes": "Problem: If A then B. After X then Y. If C then what is her annual pension?\nThe difficulty here doesn't seem to be very correlated with the model errors I am seeing and the type of misunderstanding.\nSo the problem here seems to be that there is a conditional (\"if\") statement in the problem the model is assuming to be true.\n\nAfter cutting sentences from the end and asking what the problem is telling us I got this from the model:\n\"The problem is telling you that Marcy has worked for a company for 40 years...\"\nSo the difficulty here seems to be the existence of this conditional expression which the model doesn't understand.\nIf we were to decompose this further, we could look at the \"type\" of the conditional statement: the particular language could be triggering a model error to some extent.",
+    "source_file": "evaluation_results-Qwen2.5-7B-Instruct-self_consistency_generate-2025-01-08-04-39-difficult-top100.json"
+  },
+  "Christina is planning a birthday party and needs .75 gift bags per invited guest, because 1/4 of attendees don't show up. She invited 16 friends. Gift bags are $2 each. How much will she spend?": {
+    "difficulty_types": [
+      "Extra Information",
+      "Extra Information",
+      "Extra Information",
+      "Extra Information",
+      "Extra Information"
+    ],
+    "notes": "The wording of the question is misleading. (How do I concretely identify this type of difficulty? \"Misleading Wording\")\nHere: \"because 1/4 of attendees don't show up\". When this phrase is removed the model gets the question correct.\n\nThe model adjusts the number of guests based on the 1/4 attendees showing up and multiplies by the gift bags per guest per invited guest (not guests actually showing up).",
+    "source_file": "evaluation_results-Qwen2.5-7B-Instruct-self_consistency_generate-2025-01-08-04-39-difficult-top100.json"
+  },
+  "Adrien's total salary was 30 percent higher than Lylah's. Four years later, his salary had increased, and he was earning 40% more than what he was making four years ago. If Adrien's and Lylah's salary increased simultaneously, and Adrien earned $40000 four years ago, calculate the total salary the two were receiving four years later?": {
+    "difficulty_types": [
+      "Ambiguous",
+      "Incorrect Solution"
+    ],
+    "notes": "Entities: Adrien's total salary (A), Lylah's total salary (L)\nA = 1.3L\n4  years later: A_4yrs = 1.4A\nA = 40000\nA_4yrs + L_4yrs = ?\nNote: There seems to be a lot of information/relations in this problem (If I wanted to label this what difficulty type would it be? Should I label this?).\n\nBut the source of the difficulty for the model seems to come from this statement \"If Adrien's and Lylah's salary increased simultaneously\".\nIt's ambiguous, increasing doesn't necessarily mean increasing at precisely the same amount.\n\nThe solution was incorrect: \"and Lylah's salary was 30% less\". Adrien's salary being 30% higher does not mean Lyrah's was also 30% less. It means hers was ~%23 less.",
+    "source_file": "evaluation_results-Qwen2.5-7B-Instruct-self_consistency_generate-2025-01-08-04-39-difficult-top100.json"
+  }
+}

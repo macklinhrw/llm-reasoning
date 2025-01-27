@@ -16,6 +16,7 @@ from utils import extract_answer
 # Difficulty types configuration
 DIFFICULTY_CONFIG_FILE = "config/difficulty_types.json"
 
+
 def load_difficulty_types():
     """Load difficulty types from configuration file."""
     default_types = [
@@ -26,9 +27,9 @@ def load_difficulty_types():
         "Unit Conversion",
         "Symbolic Reasoning",
         "Counterintuitive",
-        "Other"
+        "Other",
     ]
-    
+
     try:
         os.makedirs(os.path.dirname(DIFFICULTY_CONFIG_FILE), exist_ok=True)
         if os.path.exists(DIFFICULTY_CONFIG_FILE):
@@ -42,6 +43,7 @@ def load_difficulty_types():
         st.error(f"Error loading difficulty types: {str(e)}")
         return default_types
 
+
 def save_difficulty_types(types):
     """Save updated difficulty types to configuration file."""
     try:
@@ -51,6 +53,7 @@ def save_difficulty_types(types):
     except Exception as e:
         st.error(f"Error saving difficulty types: {str(e)}")
         return False
+
 
 def get_difficulty_types():
     return load_difficulty_types()
@@ -72,6 +75,7 @@ def get_annotation_path(data_file: str) -> str:
     base_name = os.path.basename(data_file).replace(".json", "")
     return os.path.join("annotations", f"{base_name}-annotations.json")
 
+
 def load_annotations(data_file: str) -> Dict[str, dict]:
     """Load existing annotations for a data file."""
     annotation_path = get_annotation_path(data_file)
@@ -80,12 +84,14 @@ def load_annotations(data_file: str) -> Dict[str, dict]:
             return json.load(f)
     return {}
 
+
 def save_annotations(data_file: str, annotations: Dict[str, dict]):
     """Save annotations to file."""
     annotation_path = get_annotation_path(data_file)
     os.makedirs(os.path.dirname(annotation_path), exist_ok=True)
     with open(annotation_path, "w") as f:
         json.dump(annotations, f, indent=2)
+
 
 def get_result_files(directory="results"):
     """Get all available result files from different subdirectories."""
@@ -308,16 +314,16 @@ def display_problem_card(problem):
     """Display a problem in a condensed card format with visual indicators."""
     annotation_status = "📌" if problem.get("annotations") else ""
     with st.expander(
-        f"{annotation_status} Problem | Accuracy: {problem['accuracy']:.2%}", 
-        expanded=False
+        f"{annotation_status} Problem | Accuracy: {problem['accuracy']:.2%}",
+        expanded=False,
     ):
         cols = st.columns([3, 1, 1, 1])
-    
+
     # Add annotation display with toggle
     show_annotations = st.checkbox(
         "Show annotations",
         value=False,
-        key=f"show_annotations_{problem['question']}"  # Unique key per problem
+        key=f"show_annotations_{problem['question']}",  # Unique key per problem
     )
 
     if show_annotations and "annotations" in problem:
@@ -492,7 +498,8 @@ def display_problem_details(problem, show_generations=False):
 
 def main():
     st.set_page_config(page_title="Dataset Viewer", page_icon="🔢", layout="wide")
-    st.markdown("""
+    st.markdown(
+        """
     <style>
         .stCheckbox label {
             white-space: nowrap;
@@ -514,7 +521,9 @@ def main():
             margin: 4px 0;
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
     st.title("Dataset Viewer")
 
     # Initialize session state
@@ -610,28 +619,25 @@ def main():
             col_sort1, col_sort2 = st.columns(2)
             with col_sort1:
                 sort_by = st.selectbox(
-                    "Sort by", 
-                    ["Difficulty"],
-                    key="sort_by_1"  # Unique key
+                    "Sort by", ["Difficulty"], key="sort_by_1"  # Unique key
                 )
             with col_sort2:
                 sort_order = st.selectbox(
-                    "Order", 
+                    "Order",
                     ["Descending", "Ascending"],
-                    key="sort_order_1"  # Unique key
+                    key="sort_order_1",  # Unique key
                 )
 
             # Sort problems and persist in session state
-            if "sorted_examples" not in st.session_state or \
-                st.session_state.get("current_sort") != (sort_by, sort_order):
-                
+            if "sorted_examples" not in st.session_state or st.session_state.get(
+                "current_sort"
+            ) != (sort_by, sort_order):
+
                 reverse = sort_order == "Descending"
                 key = "difficulty" if sort_by == "Difficulty" else "accuracy"
-                
+
                 st.session_state.sorted_examples = sorted(
-                    data["problems"],
-                    key=lambda x: x[key],
-                    reverse=reverse
+                    data["problems"], key=lambda x: x[key], reverse=reverse
                 )
                 st.session_state.current_sort = (sort_by, sort_order)
                 st.session_state.current_idx = 0  # Reset index when sorting changes
@@ -639,23 +645,23 @@ def main():
             examples = st.session_state.sorted_examples
 
             # Create tabs AFTER initializing examples
-            tab_details, tab_annotate, tab_browser = st.tabs([
-                "🔍 Problem Details", 
-                "🏷️ Annotation", 
-                "📚 Annotations Browser"
-            ])
+            tab_details, tab_annotate, tab_browser = st.tabs(
+                ["🔍 Problem Details", "🏷️ Annotation", "📚 Annotations Browser"]
+            )
 
             with tab_annotate:
                 st.subheader("Problem Annotation")
-                
+
                 # Initialize annotations in session state
                 if "annotations" not in st.session_state:
-                    st.session_state.annotations = load_annotations(file_options[selected_file])
-                
+                    st.session_state.annotations = load_annotations(
+                        file_options[selected_file]
+                    )
+
                 # Get current problem from persisted examples
                 if "sorted_examples" not in st.session_state:
                     st.session_state.sorted_examples = examples
-                
+
                 # Get fresh reference to the current problem
                 current_idx = st.session_state.current_idx
                 examples = st.session_state.sorted_examples  # Get fresh sorted list
@@ -670,28 +676,27 @@ def main():
                 # Clear widget states when problem changes
                 if "last_problem_id" not in st.session_state:
                     st.session_state.last_problem_id = problem_id
-                
+
                 if st.session_state.last_problem_id != problem_id:
                     # Clear previous widget states using hashed keys
                     prev_id = st.session_state.last_problem_id
                     keys_to_remove = [
                         f"types_{hash(prev_id)}",
-                        f"notes_{hash(prev_id)}"
+                        f"notes_{hash(prev_id)}",
                     ]
                     for key in keys_to_remove:
                         if key in st.session_state:
                             del st.session_state[key]
                     st.session_state.last_problem_id = problem_id
-                
+
                 # Get existing annotation or create new
-                annotation = st.session_state.annotations.get(problem_id, {
-                    "difficulty_types": [],
-                    "notes": ""
-                })
+                annotation = st.session_state.annotations.get(
+                    problem_id, {"difficulty_types": [], "notes": ""}
+                )
 
                 # Difficulty type selection
                 difficulty_types = load_difficulty_types()
-                
+
                 # Add type management controls
                 st.markdown("**Difficulty Types**")
                 col1, col2 = st.columns(2)
@@ -700,7 +705,7 @@ def main():
 
                 # Create safe ID for session state keys
                 safe_id = problem_id.replace(" ", "_").replace(".", "")[:50]
-                
+
                 # Initialize selected types as empty list first
                 selected_types = []
 
@@ -709,16 +714,14 @@ def main():
                     with tag_columns[current_col]:
                         # Use a guaranteed unique key structure
                         key = f"type_{safe_id}_{tag}"
-                        
+
                         # Initialize based on existing annotation
                         if key not in st.session_state:
-                            st.session_state[key] = tag in annotation.get("difficulty_types", [])
-                            
-                        checked = st.checkbox(
-                            tag,
-                            key=key,
-                            label_visibility="visible"
-                        )
+                            st.session_state[key] = tag in annotation.get(
+                                "difficulty_types", []
+                            )
+
+                        checked = st.checkbox(tag, key=key, label_visibility="visible")
                         if checked:
                             selected_types.append(tag)  # Only add checked values
                     current_col = (current_col + 1) % len(tag_columns)
@@ -727,38 +730,40 @@ def main():
                 if st.button("✏️ Edit Types", help="Modify available difficulty types"):
                     st.session_state.edit_types = True
 
-                if st.session_state.get('edit_types'):
+                if st.session_state.get("edit_types"):
                     with st.expander("📝 Edit Difficulty Types", expanded=True):
                         new_types = st.text_area(
                             "Edit difficulty types (comma-separated)",
                             value=", ".join(difficulty_types),
-                            height=150
+                            height=150,
                         )
-                        
+
                         if st.button("💾 Save Types"):
-                            updated_types = [t.strip() for t in new_types.split(",") if t.strip()]
+                            updated_types = [
+                                t.strip() for t in new_types.split(",") if t.strip()
+                            ]
                             if save_difficulty_types(updated_types):
                                 st.session_state.difficulty_types = updated_types
                                 st.success("Types updated!")
                                 st.session_state.edit_types = False
                                 st.rerun()
-                        
+
                         if st.button("❌ Cancel"):
                             st.session_state.edit_types = False
                             st.rerun()  # Force immediate UI refresh
-                
+
                 # Notes field with stable state management
                 notes_key = f"notes_{safe_id}"
                 if notes_key not in st.session_state:
                     st.session_state[notes_key] = annotation.get("notes", "")
-                    
+
                 notes = st.text_area(
                     "Additional Notes",
                     value=st.session_state[notes_key],
                     height=150,
-                    key=notes_key
+                    key=notes_key,
                 )
-                
+
                 # Create a stable button row
                 button_col1, button_col2 = st.columns([2, 1])
 
@@ -766,16 +771,21 @@ def main():
                     if st.button("💾 Save Annotation", use_container_width=True):
                         # Capture current state directly
                         current_types = [
-                            tag for tag in difficulty_types
+                            tag
+                            for tag in difficulty_types
                             if st.session_state[f"type_{safe_id}_{tag}"]
                         ]
-                        
+
                         st.session_state.annotations[problem_id] = {
                             "difficulty_types": current_types,
                             "notes": st.session_state[notes_key],
-                            "source_file": os.path.basename(file_options[selected_file])
+                            "source_file": os.path.basename(
+                                file_options[selected_file]
+                            ),
                         }
-                        save_annotations(file_options[selected_file], st.session_state.annotations)
+                        save_annotations(
+                            file_options[selected_file], st.session_state.annotations
+                        )
                         st.rerun()  # Force immediate refresh to prevent state conflicts
                         st.success("Annotation saved!")
 
@@ -784,35 +794,43 @@ def main():
                         # Initialize show_delete_confirm in session state
                         if "show_delete_confirm" not in st.session_state:
                             st.session_state.show_delete_confirm = False
-                            
+
                         if st.session_state.show_delete_confirm:
                             cols = st.columns(2)
                             with cols[0]:
-                                if st.button("✅ Confirm", 
-                                           key=f"confirm_{problem_id}",
-                                           use_container_width=True,
-                                           type="primary"):
+                                if st.button(
+                                    "✅ Confirm",
+                                    key=f"confirm_{problem_id}",
+                                    use_container_width=True,
+                                    type="primary",
+                                ):
                                     del st.session_state.annotations[problem_id]
-                                    save_annotations(file_options[selected_file], st.session_state.annotations)
+                                    save_annotations(
+                                        file_options[selected_file],
+                                        st.session_state.annotations,
+                                    )
                                     st.session_state.show_delete_confirm = False
                                     st.rerun()
                             with cols[1]:
-                                if st.button("❌ Cancel", 
-                                           key=f"cancel_{problem_id}",
-                                           use_container_width=True):
+                                if st.button(
+                                    "❌ Cancel",
+                                    key=f"cancel_{problem_id}",
+                                    use_container_width=True,
+                                ):
                                     st.session_state.show_delete_confirm = False
                                     st.rerun()
                         else:
-                            if st.button("🗑️ Delete Annotation", 
-                                       type="primary", 
-                                       use_container_width=True,
-                                       key=f"delete_{problem_id}"):
+                            if st.button(
+                                "🗑️ Delete Annotation",
+                                type="primary",
+                                use_container_width=True,
+                                key=f"delete_{problem_id}",
+                            ):
                                 st.session_state.show_delete_confirm = True
                                 st.rerun()
 
                 # Add separator below buttons to prevent content shift
                 st.markdown("---")
-                
 
             with tab_browser:
                 st.subheader("Annotations Browser")
@@ -825,27 +843,31 @@ def main():
                     difficulty_counts = Counter()
                     for ann in annotations.values():
                         difficulty_counts.update(ann["difficulty_types"])
-                
+
                     # Visualization columns
                     col_chart, col_stats = st.columns([3, 2])
-                
+
                     with col_chart:
                         if difficulty_counts:
                             fig, ax = plt.subplots()
-                            ax.pie(difficulty_counts.values(), labels=difficulty_counts.keys(), autopct='%1.1f%%')
+                            ax.pie(
+                                difficulty_counts.values(),
+                                labels=difficulty_counts.keys(),
+                                autopct="%1.1f%%",
+                            )
                             st.pyplot(fig)
                         else:
                             st.info("No difficulty types assigned yet")
-                
+
                     with col_stats:
                         st.markdown("**Annotation Statistics**")
                         st.write(f"Total annotated: {len(annotations)}")
                         st.write("**Type counts:**")
                         for type_name, count in difficulty_counts.most_common():
                             st.write(f"- {type_name}: {count}")
-                
+
                     st.markdown("---")
-                
+
                     # Add filtering controls
                     st.markdown("---")
                     col_filter1, col_filter2 = st.columns(2)
@@ -853,51 +875,58 @@ def main():
                         search_query = st.text_input("Search annotations", "")
                     with col_filter2:
                         selected_type_filter = st.multiselect(
-                            "Filter by type", 
-                            difficulty_types,
-                            default=[]
+                            "Filter by type", difficulty_types, default=[]
                         )
-                    
+
                     # Group annotations by type
                     filtered_annotations = []
                     for q, ann in annotations.items():
-                        matches_search = search_query.lower() in q.lower() or search_query.lower() in ann["notes"].lower()
-                        matches_type = not selected_type_filter or any(t in selected_type_filter for t in ann["difficulty_types"])
+                        matches_search = (
+                            search_query.lower() in q.lower()
+                            or search_query.lower() in ann["notes"].lower()
+                        )
+                        matches_type = not selected_type_filter or any(
+                            t in selected_type_filter for t in ann["difficulty_types"]
+                        )
                         if matches_search and matches_type:
                             filtered_annotations.append((q, ann))
-                    
+
                     # Add pagination
                     items_per_page = 10
-                    total_pages = (len(filtered_annotations) + items_per_page - 1) // items_per_page
+                    total_pages = (
+                        len(filtered_annotations) + items_per_page - 1
+                    ) // items_per_page
 
                     # Handle empty results case
                     if total_pages > 0:
-                        current_page = st.number_input(
-                            "Page", 
-                            min_value=1, 
-                            max_value=total_pages, 
-                            value=1
-                        ) - 1
+                        current_page = (
+                            st.number_input(
+                                "Page", min_value=1, max_value=total_pages, value=1
+                            )
+                            - 1
+                        )
                     else:
                         current_page = 0
-                    
+
                     start_idx = current_page * items_per_page
                     end_idx = min(start_idx + items_per_page, len(filtered_annotations))
-                    
+
                     # Display annotation cards in columns
-                    for idx, (q, ann) in enumerate(filtered_annotations[start_idx:end_idx]):
+                    for idx, (q, ann) in enumerate(
+                        filtered_annotations[start_idx:end_idx]
+                    ):
                         with st.expander(f"📌 {q[:50]}...", expanded=False):
                             cols = st.columns([3, 1])
                             with cols[0]:
                                 st.caption("Problem Text")
                                 st.markdown(f"```\n{q[:200]}...\n```")
-                                
+
                                 st.caption("Notes")
                                 if ann["notes"]:
                                     st.markdown(f"> *{ann['notes'][:100]}...*")
                                 else:
                                     st.markdown("*No notes*")
-                            
+
                             with cols[1]:
                                 st.caption("Difficulty Types")
                                 if ann["difficulty_types"]:
@@ -905,37 +934,58 @@ def main():
                                         st.markdown(f"- `{t}`")
                                 else:
                                     st.markdown("*No types specified*")
-                                
+
                                 # Add delete button with confirmation
                                 # Create stable keys using clean string format
                                 unique_key = f"browser_{q[:50]}_{tag}"  # Truncate question for stability
-                                unique_key = re.sub(r'\W+', '_', unique_key)  # Remove special chars
-                                
-                                if "pending_deletion" in st.session_state and st.session_state.pending_deletion == q:
+                                unique_key = re.sub(
+                                    r"\W+", "_", unique_key
+                                )  # Remove special chars
+
+                                if (
+                                    "pending_deletion" in st.session_state
+                                    and st.session_state.pending_deletion == q
+                                ):
                                     cols = st.columns(2)
                                     with cols[0]:
-                                        if st.button("✅ Confirm Delete", key=f"confirm_{unique_key}"):
+                                        if st.button(
+                                            "✅ Confirm Delete",
+                                            key=f"confirm_{unique_key}",
+                                        ):
                                             del st.session_state.annotations[q]
-                                            save_annotations(file_options[selected_file], st.session_state.annotations)
+                                            save_annotations(
+                                                file_options[selected_file],
+                                                st.session_state.annotations,
+                                            )
                                             del st.session_state.pending_deletion
                                             st.rerun()
                                     with cols[1]:
-                                        if st.button("❌ Cancel", key=f"cancel_{unique_key}"):
+                                        if st.button(
+                                            "❌ Cancel", key=f"cancel_{unique_key}"
+                                        ):
                                             del st.session_state.pending_deletion
                                             st.rerun()
                                 else:
-                                    if st.button("🗑️ Delete", key=f"delete_{unique_key}"):
+                                    if st.button(
+                                        "🗑️ Delete", key=f"delete_{unique_key}"
+                                    ):
                                         st.session_state.pending_deletion = q
                                         st.rerun()
-                    
-                                if st.button("Go to Annotation", key=f"goto_{unique_key}"):
+
+                                if st.button(
+                                    "Go to Annotation", key=f"goto_{unique_key}"
+                                ):
                                     problem_ids = [p["question"] for p in examples]
                                     if q in problem_ids:
-                                        st.session_state.current_idx = problem_ids.index(q)
+                                        st.session_state.current_idx = (
+                                            problem_ids.index(q)
+                                        )
                                         st.rerun()
                                     else:
-                                        st.warning("This annotation isn't in the current view")
-                    
+                                        st.warning(
+                                            "This annotation isn't in the current view"
+                                        )
+
                     # Pagination controls
                     if total_pages > 1:
                         st.markdown(f"**Page {current_page + 1} of {total_pages}**")
@@ -945,19 +995,19 @@ def main():
             st.subheader(f"Filtered Problems ({data['num_problems']})")
 
             # Sorting controls (removed accuracy option)
-            col_sort1, col_sort2 = st.columns(2)
-            with col_sort1:
-                sort_by = st.selectbox(
-                    "Sort by", 
-                    ["Difficulty"],
-                    key="sort_by_2"  # Unique key
-                )
-            with col_sort2:
-                sort_order = st.selectbox(
-                    "Order", 
-                    ["Descending", "Ascending"],
-                    key="sort_order_2"  # Unique key
-                )
+            # col_sort1, col_sort2 = st.columns(2)
+            # with col_sort1:
+            #     sort_by = st.selectbox(
+            #         "Sort by",
+            #         ["Difficulty"],
+            #         key="sort_by_2"  # Unique key
+            #     )
+            # with col_sort2:
+            #     sort_order = st.selectbox(
+            #         "Order",
+            #         ["Descending", "Ascending"],
+            #         key="sort_order_2"  # Unique key
+            #     )
 
             # Add annotations to problems
             annotations = load_annotations(file_options[selected_file])
@@ -1085,7 +1135,9 @@ def main():
             st.rerun()
     with nav_col2:
         if st.button("Next Problem ➡️"):
-            st.session_state.current_idx = min(len(examples)-1, st.session_state.current_idx + 1)
+            st.session_state.current_idx = min(
+                len(examples) - 1, st.session_state.current_idx + 1
+            )
             st.rerun()
     with nav_col3:
         new_idx = st.number_input(
@@ -1093,19 +1145,19 @@ def main():
             min_value=1,
             max_value=len(examples),
             value=st.session_state.current_idx + 1,
-            key="nav_input"
+            key="nav_input",
         )
-        if new_idx-1 != st.session_state.current_idx:
+        if new_idx - 1 != st.session_state.current_idx:
             st.session_state.current_idx = new_idx - 1
             st.rerun()
-    
+
     # Progress indicator
     progress_col1, progress_col2 = st.columns([1, 10])
     with progress_col1:
         st.markdown(f"**{st.session_state.current_idx + 1}/{len(examples)}**")
     with progress_col2:
         st.progress((st.session_state.current_idx + 1) / len(examples))
-    
+
     st.markdown("---")
 
     # Display current example
@@ -1115,7 +1167,7 @@ def main():
         if data_source in ["Analysis Results", "Difficulty Analysis"]:
             show_generations = st.checkbox(
                 "Show all generations",
-                key=f"show_gens_{st.session_state.current_idx}"  # Use current index as key
+                key=f"show_gens_{st.session_state.current_idx}",  # Use current index as key
             )
             display_problem_details(example, show_generations)
         elif data_source == "GSM8K Dataset":

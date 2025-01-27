@@ -1,2 +1,6 @@
 .env
 kubernetes/secret.yaml
+aider.sh
+.aider.conf.yml
+.aider*
+src/__pycache__
