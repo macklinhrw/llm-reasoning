@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import Dict, List
+from collections import Counter
+import matplotlib.pyplot as plt
 from utils import extract_answer
 
 # Difficulty types configuration
@@ -819,6 +821,31 @@ def main():
                 if not annotations:
                     st.write("No annotations saved yet")
                 else:
+                    # Difficulty type distribution analysis
+                    difficulty_counts = Counter()
+                    for ann in annotations.values():
+                        difficulty_counts.update(ann["difficulty_types"])
+                
+                    # Visualization columns
+                    col_chart, col_stats = st.columns([3, 2])
+                
+                    with col_chart:
+                        if difficulty_counts:
+                            fig, ax = plt.subplots()
+                            ax.pie(difficulty_counts.values(), labels=difficulty_counts.keys(), autopct='%1.1f%%')
+                            st.pyplot(fig)
+                        else:
+                            st.info("No difficulty types assigned yet")
+                
+                    with col_stats:
+                        st.markdown("**Annotation Statistics**")
+                        st.write(f"Total annotated: {len(annotations)}")
+                        st.write("**Type counts:**")
+                        for type_name, count in difficulty_counts.most_common():
+                            st.write(f"- {type_name}: {count}")
+                
+                    st.markdown("---")
+                
                     # Add filtering controls
                     st.markdown("---")
                     col_filter1, col_filter2 = st.columns(2)
